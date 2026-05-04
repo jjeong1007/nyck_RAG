@@ -95,6 +95,10 @@
       display: grid;
       grid-template-columns: 221px 1fr;
       height: 100vh;
+      transition: grid-template-columns 200ms ease;
+    }
+    .layout.sidebar-collapsed {
+      grid-template-columns: 56px 1fr;
     }
 
     /* ---------- Sidebar ---------- */
@@ -104,6 +108,90 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
+      min-width: 0;
+      transition: padding 200ms ease;
+    }
+    .sidebar-brand-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 6px;
+      margin: 0 0 2px;
+    }
+    .sidebar-toggle {
+      appearance: none;
+      flex-shrink: 0;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      margin: 0;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 100ms ease, opacity 100ms ease;
+    }
+    .sidebar-toggle:hover {
+      color: var(--text-body);
+    }
+    .sidebar-toggle:active {
+      opacity: 0.7;
+    }
+    .sidebar-toggle:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .sidebar-toggle .material-symbols-outlined {
+      font-size: 20px;
+    }
+    .layout.sidebar-collapsed .sidebar {
+      padding: 16px 8px 16px;
+    }
+    .layout.sidebar-collapsed .sidebar-brand-row {
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .layout.sidebar-collapsed .sidebar-toggle {
+      order: -1;
+    }
+    .layout.sidebar-collapsed .brand {
+      flex-direction: column;
+      padding: 0 0 6px;
+      gap: 0;
+      align-items: center;
+    }
+    .layout.sidebar-collapsed .brand-text,
+    .layout.sidebar-collapsed .nav-section-label,
+    .layout.sidebar-collapsed .nav-btn .nav-label,
+    .layout.sidebar-collapsed .health-sub {
+      display: none !important;
+    }
+    .layout.sidebar-collapsed .nav-btn {
+      justify-content: center;
+      padding: 10px 6px;
+    }
+    .layout.sidebar-collapsed .health-card {
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 6px;
+      gap: 6px;
+    }
+    .layout.sidebar-collapsed .health-title {
+      font-size: 10px;
+      text-align: center;
+      max-width: 48px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .layout.sidebar-collapsed .health-text {
+      align-items: center;
     }
     .brand {
       display: flex;
@@ -140,7 +228,6 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 1px 2px rgba(14, 109, 249, 0.3);
       flex-shrink: 0;
       overflow: hidden;
     }
@@ -206,8 +293,8 @@
       background: #cfcfcf;
       flex-shrink: 0;
     }
-    .health-dot.ok  { background: var(--success); box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15); }
-    .health-dot.bad { background: var(--danger); box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15); }
+    .health-dot.ok  { background: var(--success); }
+    .health-dot.bad { background: var(--danger); }
     .health-text {
       display: flex;
       flex-direction: column;
@@ -230,7 +317,6 @@
     .main {
       background: var(--card-bg);
       border-radius: var(--radius-card);
-      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -412,11 +498,10 @@
       display: flex;
       flex-direction: column;
       min-height: 100px;
-      transition: border-color 120ms ease, box-shadow 120ms ease;
+      transition: border-color 120ms ease;
     }
     .composer:focus-within {
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(14, 109, 249, 0.12);
     }
     .composer textarea {
       width: 100%;
@@ -490,11 +575,10 @@
       align-items: center;
       justify-content: center;
       transition: transform 80ms ease, opacity 80ms ease, filter 100ms ease, background 100ms ease;
-      box-shadow: 0 4px 14px rgba(14, 109, 249, 0.35);
     }
     .send-btn:hover:not(:disabled) { transform: scale(1.04); filter: brightness(1.04); }
     .send-btn:active:not(:disabled) { transform: scale(0.96); }
-    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .send-btn .send-btn-icon {
       font-size: 22px;
       width: 22px;
@@ -513,7 +597,6 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-card);
       padding: 22px 24px;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
       animation: fadeUp 200ms ease both;
     }
     .ticket-title {
@@ -596,7 +679,6 @@
       background: var(--accent);
       border: 0;
       color: #fff;
-      box-shadow: 0 1px 2px rgba(14, 109, 249, 0.2);
     }
     button.action.primary .material-symbols-outlined {
       color: #fff;
@@ -815,11 +897,10 @@
       background: #fff;
       color: var(--text-body);
       outline: 0;
-      transition: border-color 120ms ease, box-shadow 120ms ease;
+      transition: border-color 120ms ease;
     }
     .field textarea:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(14, 109, 249, 0.12);
     }
     .field-help {
       font-size: 11px;
@@ -986,6 +1067,242 @@
       font-size: 14px;
     }
 
+    /* ---------- Q&A: Claude-style conversation rail + main pane ---------- */
+    .qa-shell {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      align-items: stretch;
+      position: relative;
+    }
+    .qa-shell.rail-collapsed .qa-convo-rail {
+      width: 44px;
+      min-width: 44px;
+      padding: 10px 6px;
+      overflow: hidden;
+    }
+    .qa-shell.rail-collapsed .qa-rail-body {
+      display: none;
+    }
+    .qa-shell.rail-collapsed .qa-rail-head {
+      margin-bottom: 0;
+      justify-content: center;
+    }
+    .qa-rail-head {
+      flex-shrink: 0;
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 8px;
+    }
+    .qa-rail-toggle {
+      appearance: none;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 100ms ease, opacity 100ms ease;
+    }
+    .qa-rail-toggle:hover {
+      color: var(--text-body);
+    }
+    .qa-rail-toggle:active {
+      opacity: 0.7;
+    }
+    .qa-rail-toggle:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .qa-rail-toggle .material-symbols-outlined {
+      font-size: 20px;
+    }
+    .qa-rail-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .qa-convo-rail {
+      width: 274px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 12px 10px 12px;
+      background: linear-gradient(180deg, #f5f6f8 0%, var(--page-bg) 100%);
+      border-left: 1px solid var(--border);
+      transition: width 200ms ease, padding 200ms ease, min-width 200ms ease;
+    }
+    .qa-new-chat-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 11px 14px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-body);
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition:
+        background 120ms ease,
+        border-color 120ms ease,
+        color 120ms ease;
+    }
+    .qa-new-chat-btn:hover {
+      background: var(--accent-soft-bg);
+      border-color: rgba(14, 109, 249, 0.38);
+      color: var(--accent);
+    }
+    .qa-new-chat-btn .material-symbols-outlined {
+      font-size: 20px;
+      color: var(--accent);
+    }
+    .qa-new-chat-btn:hover .material-symbols-outlined {
+      color: var(--accent);
+    }
+    .qa-convo-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      margin: 0 -4px;
+      padding: 0 4px 8px;
+    }
+    .qa-convo-empty {
+      margin: 12px 4px 0;
+      padding: 12px 8px;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--text-soft);
+      text-align: center;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: var(--radius-sm);
+      border: 1px dashed var(--border-soft);
+    }
+    .qa-convo-group-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 10px 8px 6px;
+    }
+    .qa-convo-group:first-child .qa-convo-group-label {
+      padding-top: 2px;
+    }
+    .qa-convo-row {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      width: 100%;
+      border-radius: var(--radius-sm);
+      margin-bottom: 2px;
+      position: relative;
+      border: 0;
+      transition: background 100ms ease;
+    }
+    .qa-convo-row:hover:not(.is-active) {
+      background: #f4f4f4;
+    }
+    .qa-convo-row.is-active {
+      background: #ededed;
+    }
+    .qa-convo-row.is-active:hover {
+      background: #e3e3e3;
+    }
+    .qa-convo-row-btn {
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+      padding: 10px 12px;
+      border: 0;
+      background: transparent;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font: inherit;
+    }
+    .qa-convo-row-title {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-body);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.35;
+    }
+    .qa-convo-row.is-active .qa-convo-row-title {
+      color: var(--text-body);
+      font-weight: 600;
+    }
+    .qa-convo-row-del {
+      appearance: none;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      margin: 4px 4px 4px 0;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-soft);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 100ms ease, background 100ms ease, color 100ms ease;
+    }
+    .qa-convo-row:hover .qa-convo-row-del,
+    .qa-convo-row:focus-within .qa-convo-row-del {
+      opacity: 1;
+    }
+    .qa-convo-row-del .material-symbols-outlined {
+      font-size: 18px;
+    }
+    .qa-convo-row-del:hover {
+      background: rgba(220, 38, 38, 0.1);
+      color: var(--danger);
+    }
+    .qa-main-pane {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--card-bg);
+    }
+    .qa-pane-header {
+      display: none;
+      flex-shrink: 0;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border-soft);
+      background: var(--card-bg);
+    }
+    .qa-chat-title-mobile {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-heading);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+
     .hidden { display: none !important; }
 
     ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -994,7 +1311,45 @@
     ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.16); }
 
     @media (max-width: 760px) {
-      .layout { grid-template-columns: 1fr; height: auto; }
+      .layout,
+      .layout.sidebar-collapsed {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+      .sidebar-toggle {
+        display: none;
+      }
+      .layout.sidebar-collapsed .brand-text,
+      .layout.sidebar-collapsed .nav-section-label,
+      .layout.sidebar-collapsed .nav-btn .nav-label,
+      .layout.sidebar-collapsed .health-sub {
+        display: initial !important;
+      }
+      .layout.sidebar-collapsed .sidebar {
+        padding: 10px 12px;
+      }
+      .layout.sidebar-collapsed .sidebar-brand-row {
+        flex-direction: row;
+        align-items: center;
+        margin: 0;
+      }
+      .layout.sidebar-collapsed .brand {
+        flex-direction: row;
+        padding: 0 4px 0;
+        gap: 12px;
+      }
+      .layout.sidebar-collapsed .nav-btn {
+        justify-content: flex-start;
+        padding: 6px 10px;
+      }
+      .layout.sidebar-collapsed .health-card {
+        flex-direction: row;
+        padding: 6px 10px;
+      }
+      .layout.sidebar-collapsed .health-title {
+        font-size: 14px;
+        max-width: none;
+      }
       .sidebar {
         flex-direction: row;
         align-items: center;
@@ -1002,6 +1357,9 @@
         padding: 10px 12px;
         border-bottom: 1px solid var(--border);
         background: var(--page-bg);
+      }
+      #sidebar-nav-block {
+        display: contents;
       }
       .nav-section-label { display: none; }
       .nav-btn { padding: 6px 10px; font-size: 13px; width: auto; }
@@ -1011,41 +1369,82 @@
       .main-wrap { padding: 12px; }
       .welcome h1 { font-size: 30px; }
       .suggestion { font-size: 13px; padding: 8px 12px; }
+      .qa-shell { flex-direction: column; flex: 1; min-height: 0; }
+      .qa-shell.rail-collapsed .qa-convo-rail {
+        width: 100%;
+        min-width: 0;
+        max-height: min(40vh, 220px);
+      }
+      .qa-shell.rail-collapsed .qa-rail-body {
+        display: flex;
+      }
+      .qa-rail-head {
+        display: none;
+      }
+      .qa-convo-rail {
+        width: 100%;
+        max-height: min(40vh, 220px);
+        border-left: none;
+        border-top: 1px solid var(--border);
+        padding: 10px 10px 8px;
+      }
+      .qa-convo-list {
+        max-height: min(28vh, 160px);
+      }
+      .qa-new-chat-btn {
+        margin-bottom: 8px;
+        padding: 10px 12px;
+      }
+      .qa-pane-header { display: block; }
     }
   </style>
 </head>
 <body>
-  <div class="layout">
+  <div class="layout" id="app-layout">
     <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <img src="nyck-brand-mark.png" alt="" width="79" height="79" decoding="async" />
+      <div class="sidebar-brand-row">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <img src="nyck-brand-mark.png" alt="" width="79" height="79" decoding="async" />
+          </div>
+          <div class="brand-text">
+            <div class="brand-name">Nyck AI</div>
+            <span class="brand-caption">Admin</span>
+          </div>
         </div>
-        <div class="brand-text">
-          <div class="brand-name">Nyck AI</div>
-          <span class="brand-caption">Admin</span>
-        </div>
+        <button
+          type="button"
+          class="sidebar-toggle"
+          id="sidebar-toggle"
+          aria-expanded="true"
+          aria-controls="sidebar-nav-block"
+          title="Collapse navigation"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">left_panel_close</span>
+        </button>
       </div>
 
+      <div id="sidebar-nav-block">
       <div class="nav-section-label">Chat</div>
-      <button class="nav-btn active" data-tab="qa" type="button">
+      <button class="nav-btn active" data-tab="qa" type="button" title="Q&amp;A Assistant">
         <span class="material-symbols-outlined nav-icon" aria-hidden="true">chat</span>
-        Q&amp;A Assistant
+        <span class="nav-label">Q&amp;A Assistant</span>
       </button>
-      <button class="nav-btn" data-tab="ticket" type="button">
+      <button class="nav-btn" data-tab="ticket" type="button" title="Generate ticket">
         <span class="material-symbols-outlined nav-icon" aria-hidden="true">assignment</span>
-        Generate Ticket
+        <span class="nav-label">Generate Ticket</span>
       </button>
 
       <div class="nav-section-label">Knowledge</div>
-      <button class="nav-btn" data-tab="ingest" type="button">
+      <button class="nav-btn" data-tab="ingest" type="button" title="Ingest sources">
         <span class="material-symbols-outlined nav-icon" aria-hidden="true">download</span>
-        Ingest Sources
+        <span class="nav-label">Ingest Sources</span>
       </button>
-      <button class="nav-btn" data-tab="sources" type="button">
+      <button class="nav-btn" data-tab="sources" type="button" title="Source library">
         <span class="material-symbols-outlined nav-icon" aria-hidden="true">library_books</span>
-        Source library
+        <span class="nav-label">Source library</span>
       </button>
+      </div>
 
       <div class="sidebar-spacer"></div>
 
@@ -1062,71 +1461,125 @@
       <main class="main">
         <!-- Q&A tab -->
         <section id="tab-qa" class="tab" style="display: contents;">
-          <div class="thread" id="qa-thread">
-            <div class="thread-inner" id="qa-thread-inner">
-              <div class="welcome" id="qa-welcome">
-                <h1><span style="color: var(--text-heading);">Hi there,</span> <span class="gradient">I'm Nyck</span></h1>
-                <p>How can I help with your knowledge base today?</p>
+          <div class="qa-shell" id="qa-shell">
+            <div class="qa-main-pane">
+              <header class="qa-pane-header">
+                <span id="qa-chat-title" class="qa-chat-title-mobile">New chat</span>
+              </header>
+              <div class="thread" id="qa-thread">
+                <div class="thread-inner" id="qa-thread-inner">
+                  <div class="welcome" id="qa-welcome">
+                    <h1><span style="color: var(--text-heading);">Hi there,</span> <span class="gradient">I'm Nyck</span></h1>
+                    <p>How can I help with your knowledge base today?</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="suggestion-row" id="qa-suggestions">
+                <button class="suggestion" data-prompt="What's our refund policy for enterprise customers?">What's our refund policy?</button>
+                <button class="suggestion" data-prompt="Summarize the most recent Acme call.">Recent Acme call</button>
+                <button class="suggestion" data-prompt="Who owns onboarding for new design partners?">Onboarding owner</button>
+                <button class="suggestion" data-prompt="What features did customers ask for last month?">Recent feature requests</button>
+              </div>
+
+              <div class="composer-wrap">
+                <form class="composer" id="qa-form" autocomplete="off">
+                  <textarea id="qa-input" rows="1" placeholder="Send a message"></textarea>
+                  <div class="composer-row">
+                    <div class="composer-meta">
+                      <span id="qa-status" class="status-msg"></span>
+                    </div>
+                    <button id="qa-submit" class="send-btn" type="submit" aria-label="Send">
+                      <span class="material-symbols-outlined send-btn-icon" aria-hidden="true">arrow_upward</span>
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
-          </div>
-
-          <div class="suggestion-row" id="qa-suggestions">
-            <button class="suggestion" data-prompt="What's our refund policy for enterprise customers?">What's our refund policy?</button>
-            <button class="suggestion" data-prompt="Summarize the most recent Acme call.">Recent Acme call</button>
-            <button class="suggestion" data-prompt="Who owns onboarding for new design partners?">Onboarding owner</button>
-            <button class="suggestion" data-prompt="What features did customers ask for last month?">Recent feature requests</button>
-          </div>
-
-          <div class="composer-wrap">
-            <form class="composer" id="qa-form" autocomplete="off">
-              <textarea id="qa-input" rows="1" placeholder="Send a message"></textarea>
-              <div class="composer-row">
-                <div class="composer-meta">
-                  <span id="qa-status" class="status-msg"></span>
-                </div>
-                <button id="qa-submit" class="send-btn" type="submit" aria-label="Send">
-                  <span class="material-symbols-outlined send-btn-icon" aria-hidden="true">arrow_upward</span>
+            <aside class="qa-convo-rail" id="qa-convo-rail" aria-label="Your chats">
+              <div class="qa-rail-head">
+                <button
+                  type="button"
+                  class="qa-rail-toggle"
+                  id="qa-rail-toggle"
+                  aria-expanded="true"
+                  title="Collapse chat list"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">right_panel_close</span>
                 </button>
               </div>
-            </form>
+              <div class="qa-rail-body">
+                <button type="button" class="qa-new-chat-btn" id="qa-new-chat">
+                  <span class="material-symbols-outlined" aria-hidden="true">edit_square</span>
+                  New chat
+                </button>
+                <div id="qa-history-list" class="qa-convo-list" role="list"></div>
+              </div>
+            </aside>
           </div>
         </section>
 
         <!-- Ticket tab -->
         <section id="tab-ticket" class="tab hidden" style="display: none;">
-          <div class="thread" id="ticket-thread">
-            <div class="thread-inner" id="ticket-thread-inner">
-              <div class="welcome" id="ticket-welcome">
-                <h1><span style="color: var(--text-heading);">Hi there,</span> <span class="gradient">let's draft a ticket</span></h1>
-                <p>Describe a feature, bug, or research item — Nyck will structure it using related context from your knowledge base.</p>
+          <div class="qa-shell" id="ticket-shell">
+            <div class="qa-main-pane">
+              <header class="qa-pane-header">
+                <span id="ticket-chat-title" class="qa-chat-title-mobile">New chat</span>
+              </header>
+              <div class="thread" id="ticket-thread">
+                <div class="thread-inner" id="ticket-thread-inner">
+                  <div class="welcome" id="ticket-welcome">
+                    <h1><span style="color: var(--text-heading);">Hi there,</span> <span class="gradient">let's draft a ticket</span></h1>
+                    <p>Describe a feature, bug, or research item — Nyck will structure it using related context from your knowledge base.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="suggestion-row" id="ticket-suggestions">
+                <button class="suggestion" data-prompt="Customers on Safari are getting kicked out after switching wifi. Should auto-reauthenticate without losing draft state.">Safari logout bug</button>
+                <button class="suggestion" data-prompt="Add a CSV export to the customer dashboard so account managers can share data.">CSV export feature</button>
+                <button class="suggestion" data-prompt="Investigate why our trial-to-paid conversion dropped this quarter.">Conversion research</button>
+                <button class="suggestion" data-prompt="Improve performance of the activity feed; it lags after 200+ events.">Activity feed perf</button>
+              </div>
+
+              <div class="composer-wrap">
+                <form class="composer" id="ticket-form" autocomplete="off">
+                  <textarea id="ticket-input" rows="1" placeholder="Send a message"></textarea>
+                  <div class="composer-row">
+                    <div class="composer-meta">
+                      <label class="checkbox">
+                        <input id="ticket-push" type="checkbox" />
+                        Push directly to Notion
+                      </label>
+                      <span id="ticket-status" class="status-msg"></span>
+                    </div>
+                    <button id="ticket-submit" class="send-btn" type="submit" aria-label="Generate">
+                      <span class="material-symbols-outlined send-btn-icon" aria-hidden="true">arrow_upward</span>
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
-          </div>
-
-          <div class="suggestion-row" id="ticket-suggestions">
-            <button class="suggestion" data-prompt="Customers on Safari are getting kicked out after switching wifi. Should auto-reauthenticate without losing draft state.">Safari logout bug</button>
-            <button class="suggestion" data-prompt="Add a CSV export to the customer dashboard so account managers can share data.">CSV export feature</button>
-            <button class="suggestion" data-prompt="Investigate why our trial-to-paid conversion dropped this quarter.">Conversion research</button>
-            <button class="suggestion" data-prompt="Improve performance of the activity feed; it lags after 200+ events.">Activity feed perf</button>
-          </div>
-
-          <div class="composer-wrap">
-            <form class="composer" id="ticket-form" autocomplete="off">
-              <textarea id="ticket-input" rows="1" placeholder="Send a message"></textarea>
-              <div class="composer-row">
-                <div class="composer-meta">
-                  <label class="checkbox">
-                    <input id="ticket-push" type="checkbox" />
-                    Push directly to Notion
-                  </label>
-                  <span id="ticket-status" class="status-msg"></span>
-                </div>
-                <button id="ticket-submit" class="send-btn" type="submit" aria-label="Generate">
-                  <span class="material-symbols-outlined send-btn-icon" aria-hidden="true">arrow_upward</span>
+            <aside class="qa-convo-rail" id="ticket-convo-rail" aria-label="Your ticket drafts">
+              <div class="qa-rail-head">
+                <button
+                  type="button"
+                  class="qa-rail-toggle"
+                  id="ticket-rail-toggle"
+                  aria-expanded="true"
+                  title="Collapse chat list"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">right_panel_close</span>
                 </button>
               </div>
-            </form>
+              <div class="qa-rail-body">
+                <button type="button" class="qa-new-chat-btn" id="ticket-new-chat">
+                  <span class="material-symbols-outlined" aria-hidden="true">edit_square</span>
+                  New chat
+                </button>
+                <div id="ticket-history-list" class="qa-convo-list" role="list"></div>
+              </div>
+            </aside>
           </div>
         </section>
 
@@ -1322,6 +1775,93 @@
         return (window.location && window.location.host) || "localhost";
       }
 
+      // ---------- Layout: collapsible sidebar + Q&A chat rail ----------
+      var UI_KEY_SIDEBAR = "nyck_ui_sidebar_collapsed";
+      var UI_KEY_QA_RAIL = "nyck_ui_qa_rail_collapsed";
+      var UI_KEY_TICKET_RAIL = "nyck_ui_ticket_rail_collapsed";
+
+      function setSidebarCollapsed(collapsed) {
+        var layout = document.getElementById("app-layout");
+        if (!layout) return;
+        layout.classList.toggle("sidebar-collapsed", collapsed);
+        var btn = document.getElementById("sidebar-toggle");
+        if (btn) {
+          btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+          btn.title = collapsed ? "Expand navigation" : "Collapse navigation";
+          var icon = btn.querySelector(".material-symbols-outlined");
+          if (icon) icon.textContent = collapsed ? "right_panel_open" : "left_panel_close";
+        }
+        try {
+          localStorage.setItem(UI_KEY_SIDEBAR, collapsed ? "1" : "0");
+        } catch (_e) {}
+      }
+
+      function setQARailCollapsed(collapsed) {
+        var shell = document.getElementById("qa-shell");
+        if (!shell) return;
+        shell.classList.toggle("rail-collapsed", collapsed);
+        var btn = document.getElementById("qa-rail-toggle");
+        if (btn) {
+          btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+          btn.title = collapsed ? "Expand chat list" : "Collapse chat list";
+          var icon = btn.querySelector(".material-symbols-outlined");
+          if (icon) icon.textContent = collapsed ? "left_panel_open" : "right_panel_close";
+        }
+        try {
+          localStorage.setItem(UI_KEY_QA_RAIL, collapsed ? "1" : "0");
+        } catch (_e) {}
+      }
+
+      function setTicketRailCollapsed(collapsed) {
+        var shell = document.getElementById("ticket-shell");
+        if (!shell) return;
+        shell.classList.toggle("rail-collapsed", collapsed);
+        var btn = document.getElementById("ticket-rail-toggle");
+        if (btn) {
+          btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+          btn.title = collapsed ? "Expand chat list" : "Collapse chat list";
+          var icon = btn.querySelector(".material-symbols-outlined");
+          if (icon) icon.textContent = collapsed ? "left_panel_open" : "right_panel_close";
+        }
+        try {
+          localStorage.setItem(UI_KEY_TICKET_RAIL, collapsed ? "1" : "0");
+        } catch (_e) {}
+      }
+
+      function initLayoutCollapse() {
+        var layout = document.getElementById("app-layout");
+        var sBtn = document.getElementById("sidebar-toggle");
+        if (layout && sBtn) {
+          sBtn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            setSidebarCollapsed(!layout.classList.contains("sidebar-collapsed"));
+          });
+        }
+        var shell = document.getElementById("qa-shell");
+        var rBtn = document.getElementById("qa-rail-toggle");
+        if (shell && rBtn) {
+          rBtn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            setQARailCollapsed(!shell.classList.contains("rail-collapsed"));
+          });
+        }
+        var tShell = document.getElementById("ticket-shell");
+        var tBtn = document.getElementById("ticket-rail-toggle");
+        if (tShell && tBtn) {
+          tBtn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            setTicketRailCollapsed(!tShell.classList.contains("rail-collapsed"));
+          });
+        }
+        try {
+          if (localStorage.getItem(UI_KEY_SIDEBAR) === "1") setSidebarCollapsed(true);
+          if (localStorage.getItem(UI_KEY_QA_RAIL) === "1") setQARailCollapsed(true);
+          if (localStorage.getItem(UI_KEY_TICKET_RAIL) === "1") setTicketRailCollapsed(true);
+        } catch (_e) {}
+      }
+
+      initLayoutCollapse();
+
       // ---------- Tabs ----------
       const tabs = {
         qa: document.getElementById("tab-qa"),
@@ -1501,14 +2041,312 @@
       }
 
       // ---------- Q&A tab ----------
+      const QA_STORAGE_KEY = "nyck_qa_chats_v1";
+      const QA_MAX_CHATS = 40;
+      const QA_MAX_MSG = 200;
+
       const qaForm = document.getElementById("qa-form");
       const qaInput = document.getElementById("qa-input");
       const qaSubmit = document.getElementById("qa-submit");
       const qaStatus = document.getElementById("qa-status");
       const qaThread = document.getElementById("qa-thread");
       const qaThreadInner = document.getElementById("qa-thread-inner");
-      const qaWelcome = document.getElementById("qa-welcome");
       const qaSuggestions = document.getElementById("qa-suggestions");
+
+      /** In-memory transcript for the active chat (includes optional sources on assistant turns). */
+      const qaTranscript = [];
+      var qaChatList = [];
+      var qaActiveChatId = "";
+
+      (function () {
+        var row = document.getElementById("qa-suggestions");
+        if (!row) return;
+        row.addEventListener("click", function (e) {
+          var el = e.target && e.target.closest && e.target.closest(".suggestion");
+          if (!el || !row.contains(el)) return;
+          qaInput.value = el.getAttribute("data-prompt") || el.textContent;
+          autosize(qaInput);
+          qaInput.focus();
+        });
+      })();
+
+      function qaWelcomeInnerHTML() {
+        return (
+          '<div class="welcome" id="qa-welcome">' +
+            '<h1><span style="color: var(--text-heading);">Hi there,</span> <span class="gradient">I\'m Nyck</span></h1>' +
+            "<p>How can I help with your knowledge base today?</p>" +
+          "</div>"
+        );
+      }
+
+      function genQAChatId() {
+        return "c" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 9);
+      }
+
+      function deriveQATitle(messages) {
+        for (var i = 0; i < messages.length; i++) {
+          if (messages[i].role === "user") {
+            var t = (messages[i].content || "").trim();
+            if (!t) continue;
+            if (t.length > 52) return t.slice(0, 49) + "…";
+            return t;
+          }
+        }
+        return "New chat";
+      }
+
+      function updateQAChatTitle() {
+        var el = document.getElementById("qa-chat-title");
+        if (!el) return;
+        el.textContent = qaTranscript.length ? deriveQATitle(qaTranscript) : "New chat";
+      }
+
+      function writeQAStorage() {
+        try {
+          localStorage.setItem(
+            QA_STORAGE_KEY,
+            JSON.stringify({ chats: qaChatList, activeId: qaActiveChatId, v: 1 })
+          );
+        } catch (_err) {}
+      }
+
+      function chatCreatedAt(c) {
+        if (c.createdAt != null) return c.createdAt;
+        return c.updatedAt || 0;
+      }
+
+      function persistQA() {
+        var idx = qaChatList.findIndex(function (c) { return c.id === qaActiveChatId; });
+        if (qaTranscript.length > 0) {
+          var title = deriveQATitle(qaTranscript);
+          var msgs = qaTranscript.map(function (m) {
+            var o = { role: m.role, content: m.content };
+            if (Array.isArray(m.sources) && m.sources.length) o.sources = m.sources;
+            return o;
+          });
+          if (msgs.length > QA_MAX_MSG) msgs = msgs.slice(-QA_MAX_MSG);
+          var now = Date.now();
+          var rec = {
+            id: qaActiveChatId,
+            title: title,
+            updatedAt: now,
+            messages: msgs,
+          };
+          if (idx >= 0) {
+            var prev = qaChatList[idx];
+            rec.createdAt = prev.createdAt != null ? prev.createdAt : (prev.updatedAt || now);
+            qaChatList[idx] = rec;
+          } else {
+            rec.createdAt = now;
+            qaChatList.unshift(rec);
+          }
+        }
+        if (qaChatList.length > QA_MAX_CHATS) {
+          qaChatList.sort(function (a, b) {
+            return chatCreatedAt(b) - chatCreatedAt(a);
+          });
+          qaChatList = qaChatList.slice(0, QA_MAX_CHATS);
+        }
+        writeQAStorage();
+        refreshQAHistoryPanel();
+        updateQAChatTitle();
+      }
+
+      function buildQAMessageEl(msg) {
+        var wrap = document.createElement("div");
+        if (msg.role === "user") {
+          wrap.className = "msg user";
+          wrap.innerHTML = '<div class="bubble user">' + escapeHtml(msg.content) + "</div>";
+          return wrap;
+        }
+        wrap.className = "msg assistant";
+        var chips = "";
+        if (Array.isArray(msg.sources) && msg.sources.length) {
+          chips = msg.sources.map(chipForSource).join("");
+        }
+        wrap.innerHTML =
+          '<div class="bubble assistant">' + escapeHtml(msg.content || "") + "</div>" +
+          (chips ? '<div class="source-chips">' + chips + "</div>" : "");
+        return wrap;
+      }
+
+      function hydrateQAFromStoredChat(chat) {
+        qaTranscript.length = 0;
+        (chat.messages || []).forEach(function (m) {
+          qaTranscript.push({
+            role: m.role,
+            content: m.content,
+            sources: Array.isArray(m.sources) ? m.sources : undefined,
+          });
+        });
+        qaThreadInner.innerHTML = "";
+        if (!qaTranscript.length) {
+          qaThreadInner.innerHTML = qaWelcomeInnerHTML();
+          qaSuggestions.classList.remove("hidden");
+        } else {
+          qaSuggestions.classList.add("hidden");
+          qaTranscript.forEach(function (m) {
+            qaThreadInner.appendChild(buildQAMessageEl(m));
+          });
+        }
+        updateQAChatTitle();
+        scrollThreadToBottom(qaThread);
+      }
+
+      function bucketChatsByCreated(sortedChats) {
+        var dayMs = 86400000;
+        var now = new Date();
+        var startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        var startOfYesterday = startOfToday - dayMs;
+        var startOfWeek = startOfToday - 7 * dayMs;
+        var groups = { Today: [], Yesterday: [], "Previous 7 days": [], Older: [] };
+        sortedChats.forEach(function (c) {
+          var t = chatCreatedAt(c);
+          if (t >= startOfToday) groups.Today.push(c);
+          else if (t >= startOfYesterday) groups.Yesterday.push(c);
+          else if (t >= startOfWeek) groups["Previous 7 days"].push(c);
+          else groups.Older.push(c);
+        });
+        return groups;
+      }
+
+      function bindQAHistoryListEvents(panelHost) {
+        panelHost.querySelectorAll(".qa-convo-row-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var id = btn.getAttribute("data-chat-id");
+            if (id) switchQAChat(id);
+          });
+        });
+        panelHost.querySelectorAll(".qa-convo-row-del").forEach(function (btn) {
+          btn.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            var id = btn.getAttribute("data-del-id");
+            if (id) deleteQAChat(id);
+          });
+        });
+      }
+
+      function refreshQAHistoryPanel() {
+        var panelHost = document.getElementById("qa-history-list");
+        if (!panelHost) return;
+        var sorted = qaChatList.slice().sort(function (a, b) {
+          return chatCreatedAt(b) - chatCreatedAt(a);
+        });
+        if (!sorted.length) {
+          panelHost.innerHTML =
+            '<p class="qa-convo-empty">No chats yet. Use <strong>New chat</strong> to start.</p>';
+          return;
+        }
+        var groups = bucketChatsByCreated(sorted);
+        var order = ["Today", "Yesterday", "Previous 7 days", "Older"];
+        var html = "";
+        order.forEach(function (label) {
+          var arr = groups[label];
+          if (!arr || !arr.length) return;
+          html +=
+            '<div class="qa-convo-group" role="group">' +
+            '<div class="qa-convo-group-label">' +
+            escapeHtml(label) +
+            "</div>";
+          arr.forEach(function (c) {
+            var activeCls = c.id === qaActiveChatId ? " is-active" : "";
+            var safeId = escapeHtml(c.id || "");
+            var safeTitle = escapeHtml(c.title || "Chat");
+            html +=
+              '<div class="qa-convo-row' + activeCls + '" role="listitem">' +
+              '<button type="button" class="qa-convo-row-btn" data-chat-id="' +
+              safeId +
+              '">' +
+              '<span class="qa-convo-row-title">' +
+              safeTitle +
+              "</span></button>" +
+              '<button type="button" class="qa-convo-row-del" data-del-id="' +
+              safeId +
+              '" aria-label="Delete chat">' +
+              '<span class="material-symbols-outlined" aria-hidden="true">close</span>' +
+              "</button></div>";
+          });
+          html += "</div>";
+        });
+        panelHost.innerHTML = html;
+        bindQAHistoryListEvents(panelHost);
+      }
+
+      function switchQAChat(id) {
+        var chat = qaChatList.find(function (c) { return c.id === id; });
+        if (!chat) return;
+        persistQA();
+        qaActiveChatId = id;
+        hydrateQAFromStoredChat(chat);
+        writeQAStorage();
+        refreshQAHistoryPanel();
+      }
+
+      function deleteQAChat(id) {
+        var wasActive = qaActiveChatId === id;
+        qaChatList = qaChatList.filter(function (c) { return c.id !== id; });
+        if (!wasActive) {
+          writeQAStorage();
+          refreshQAHistoryPanel();
+          return;
+        }
+        qaActiveChatId = qaChatList.length ? qaChatList[0].id : genQAChatId();
+        var next = qaChatList.find(function (c) { return c.id === qaActiveChatId; });
+        if (next && next.messages && next.messages.length) {
+          hydrateQAFromStoredChat(next);
+        } else {
+          qaTranscript.length = 0;
+          qaThreadInner.innerHTML = qaWelcomeInnerHTML();
+          qaSuggestions.classList.remove("hidden");
+          updateQAChatTitle();
+        }
+        writeQAStorage();
+        refreshQAHistoryPanel();
+      }
+
+      function startNewQAChat() {
+        persistQA();
+        qaActiveChatId = genQAChatId();
+        qaTranscript.length = 0;
+        qaThreadInner.innerHTML = qaWelcomeInnerHTML();
+        qaSuggestions.classList.remove("hidden");
+        writeQAStorage();
+        refreshQAHistoryPanel();
+        updateQAChatTitle();
+      }
+
+      function initQAChats() {
+        try {
+          var raw = localStorage.getItem(QA_STORAGE_KEY);
+          var st = raw ? JSON.parse(raw) : {};
+          qaChatList = Array.isArray(st.chats) ? st.chats : [];
+          qaActiveChatId = typeof st.activeId === "string" ? st.activeId : "";
+        } catch (_e) {
+          qaChatList = [];
+          qaActiveChatId = "";
+        }
+        qaChatList.forEach(function (c) {
+          if (c.createdAt == null) c.createdAt = c.updatedAt || Date.now();
+        });
+        qaChatList.sort(function (a, b) {
+          return chatCreatedAt(b) - chatCreatedAt(a);
+        });
+        var found = qaActiveChatId && qaChatList.some(function (c) { return c.id === qaActiveChatId; });
+        if (!found) {
+          qaActiveChatId = qaChatList.length ? qaChatList[0].id : genQAChatId();
+        }
+        var active = qaChatList.find(function (c) { return c.id === qaActiveChatId; });
+        if (active && active.messages && active.messages.length) {
+          hydrateQAFromStoredChat(active);
+        } else {
+          qaTranscript.length = 0;
+          qaThreadInner.innerHTML = qaWelcomeInnerHTML();
+          qaSuggestions.classList.remove("hidden");
+          updateQAChatTitle();
+        }
+        refreshQAHistoryPanel();
+        writeQAStorage();
+      }
 
       qaInput.addEventListener("input", function () { autosize(qaInput); });
       qaInput.addEventListener("keydown", function (e) {
@@ -1517,13 +2355,14 @@
           qaForm.requestSubmit();
         }
       });
-      document.querySelectorAll("#qa-suggestions .suggestion").forEach(function (el) {
-        el.addEventListener("click", function () {
-          qaInput.value = el.getAttribute("data-prompt") || el.textContent;
-          autosize(qaInput);
+
+      var qaNewChatBtn = document.getElementById("qa-new-chat");
+      if (qaNewChatBtn) {
+        qaNewChatBtn.addEventListener("click", function () {
+          startNewQAChat();
           qaInput.focus();
         });
-      });
+      }
 
       qaForm.addEventListener("submit", async function (e) {
         e.preventDefault();
@@ -1532,7 +2371,7 @@
           setStatus(qaStatus, "Type a question first.", "error");
           return;
         }
-        dismissChrome(qaWelcome, qaSuggestions);
+        dismissChrome(document.getElementById("qa-welcome"), qaSuggestions);
 
         const userBubble = document.createElement("div");
         userBubble.className = "msg user";
@@ -1552,12 +2391,20 @@
         setStatus(qaStatus, "");
 
         try {
-          const data = await postJSON("/qa", { question: question });
+          const data = await postJSON("/qa", {
+            question: question,
+            messages: qaTranscript.map(function (t) {
+              return { role: t.role, content: t.content };
+            }),
+          });
           const sources = Array.isArray(data.sources) ? data.sources : [];
           const chips = sources.map(chipForSource).join("");
           pending.innerHTML =
             '<div class="bubble assistant">' + escapeHtml(data.answer || "") + '</div>' +
             (chips ? '<div class="source-chips">' + chips + '</div>' : "");
+          qaTranscript.push({ role: "user", content: question });
+          qaTranscript.push({ role: "assistant", content: data.answer || "", sources: sources });
+          persistQA();
         } catch (err) {
           pending.innerHTML =
             '<div class="bubble error">Error: ' + escapeHtml(err.message) + '</div>';
@@ -1567,6 +2414,8 @@
           qaInput.focus();
         }
       });
+
+      initQAChats();
 
       // ---------- Ticket tab ----------
       const ticketForm = document.getElementById("ticket-form");
@@ -1581,71 +2430,116 @@
 
       let lastTicket = null;
 
-      ticketInput.addEventListener("input", function () { autosize(ticketInput); });
-      ticketInput.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          ticketForm.requestSubmit();
-        }
-      });
-      document.querySelectorAll("#ticket-suggestions .suggestion").forEach(function (el) {
-        el.addEventListener("click", function () {
+      const TICKET_STORAGE_KEY = "nyck_ticket_chats_v1";
+      const TICKET_MAX_CHATS = 40;
+      const TICKET_MAX_MSG = 200;
+
+      const ticketTranscript = [];
+      var ticketChatList = [];
+      var ticketActiveChatId = "";
+
+      (function () {
+        var row = document.getElementById("ticket-suggestions");
+        if (!row) return;
+        row.addEventListener("click", function (e) {
+          var el = e.target && e.target.closest && e.target.closest(".suggestion");
+          if (!el || !row.contains(el)) return;
           ticketInput.value = el.getAttribute("data-prompt") || el.textContent;
           autosize(ticketInput);
           ticketInput.focus();
         });
-      });
+      })();
 
-      ticketForm.addEventListener("submit", async function (e) {
-        e.preventDefault();
-        const description = ticketInput.value.trim();
-        if (!description) {
-          setStatus(ticketStatus, "Describe the ticket first.", "error");
-          return;
+      function ticketWelcomeInnerHTML() {
+        return (
+          '<div class="welcome" id="ticket-welcome">' +
+            '<h1><span style="color: var(--text-heading);">Hi there,</span> <span class="gradient">let\'s draft a ticket</span></h1>' +
+            "<p>Describe a feature, bug, or research item — Nyck will structure it using related context from your knowledge base.</p>" +
+          "</div>"
+        );
+      }
+
+      function genTicketChatId() {
+        return "t" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 9);
+      }
+
+      function deriveTicketTitle(messages) {
+        for (var i = 0; i < messages.length; i++) {
+          if (messages[i].role === "user") {
+            var t = (messages[i].content || "").trim();
+            if (!t) continue;
+            if (t.length > 52) return t.slice(0, 49) + "…";
+            return t;
+          }
         }
-        dismissChrome(ticketWelcome, ticketSuggestions);
+        return "New chat";
+      }
 
-        const userBubble = document.createElement("div");
-        userBubble.className = "msg user";
-        userBubble.innerHTML = '<div class="bubble user">' + escapeHtml(description) + '</div>';
-        ticketThreadInner.appendChild(userBubble);
+      function updateTicketChatTitle() {
+        var el = document.getElementById("ticket-chat-title");
+        if (!el) return;
+        el.textContent = ticketTranscript.length ? deriveTicketTitle(ticketTranscript) : "New chat";
+      }
 
-        const pending = document.createElement("div");
-        pending.className = "msg assistant";
-        pending.innerHTML =
-          '<div class="bubble assistant"><span class="typing"><span></span><span></span><span></span></span></div>';
-        ticketThreadInner.appendChild(pending);
-        scrollThreadToBottom(ticketThread);
-
-        ticketSubmit.disabled = true;
-        setStatus(ticketStatus, ticketPush.checked ? "Generating + pushing…" : "Generating…", "loading");
-        ticketInput.value = "";
-        autosize(ticketInput);
-
+      function writeTicketStorage() {
         try {
-          const data = await postJSON("/ticket", {
-            description: description,
-            push_to_notion: ticketPush.checked,
-          });
-          lastTicket = data;
-          renderTicketCard(pending, data);
-          setStatus(
-            ticketStatus,
-            data.notion_url ? "Pushed to Notion." : "",
-            data.notion_url ? "success" : ""
+          localStorage.setItem(
+            TICKET_STORAGE_KEY,
+            JSON.stringify({ chats: ticketChatList, activeId: ticketActiveChatId, v: 1 })
           );
-        } catch (err) {
-          pending.innerHTML =
-            '<div class="bubble error">Error: ' + escapeHtml(err.message) + '</div>';
-          setStatus(ticketStatus, "");
-        } finally {
-          ticketSubmit.disabled = false;
-          scrollThreadToBottom(ticketThread);
-          ticketInput.focus();
+        } catch (_err) {}
+      }
+
+      function persistTicket() {
+        var idx = ticketChatList.findIndex(function (c) { return c.id === ticketActiveChatId; });
+        if (ticketTranscript.length > 0) {
+          var title = deriveTicketTitle(ticketTranscript);
+          var msgs = ticketTranscript.map(function (m) {
+            var o = { role: m.role, content: m.content };
+            if (m.ticketData) o.ticketData = m.ticketData;
+            return o;
+          });
+          if (msgs.length > TICKET_MAX_MSG) msgs = msgs.slice(-TICKET_MAX_MSG);
+          var now = Date.now();
+          var rec = {
+            id: ticketActiveChatId,
+            title: title,
+            updatedAt: now,
+            messages: msgs,
+          };
+          if (idx >= 0) {
+            var prev = ticketChatList[idx];
+            rec.createdAt = prev.createdAt != null ? prev.createdAt : (prev.updatedAt || now);
+            ticketChatList[idx] = rec;
+          } else {
+            rec.createdAt = now;
+            ticketChatList.unshift(rec);
+          }
         }
-      });
+        if (ticketChatList.length > TICKET_MAX_CHATS) {
+          ticketChatList.sort(function (a, b) {
+            return chatCreatedAt(b) - chatCreatedAt(a);
+          });
+          ticketChatList = ticketChatList.slice(0, TICKET_MAX_CHATS);
+        }
+        writeTicketStorage();
+        refreshTicketHistoryPanel();
+        updateTicketChatTitle();
+      }
+
+      function patchLatestTicketNotionInTranscript(url) {
+        for (var i = ticketTranscript.length - 1; i >= 0; i--) {
+          var m = ticketTranscript[i];
+          if (m.role === "assistant" && m.ticketData) {
+            m.ticketData.notion_url = url;
+            persistTicket();
+            return;
+          }
+        }
+      }
 
       function renderTicketCard(container, data) {
+        if (!data) data = {};
         const t = data.ticket || {};
         const sources = Array.isArray(data.sources) ? data.sources : [];
         const tags = Array.isArray(t.tags) ? t.tags : [];
@@ -1700,10 +2594,10 @@
             '</div>' +
           '</div>';
 
+        const md = (data.markdown || "");
         const copyBtn = container.querySelector('[data-role="copy"]');
         if (copyBtn) {
           copyBtn.addEventListener("click", async function () {
-            const md = (lastTicket && lastTicket.markdown) || "";
             try {
               await navigator.clipboard.writeText(md);
               setStatus(ticketStatus, "Markdown copied to clipboard.", "success");
@@ -1721,13 +2615,15 @@
         const pushBtn = container.querySelector('[data-role="push"]');
         if (pushBtn) {
           pushBtn.addEventListener("click", async function () {
-            if (!lastTicket || !lastTicket.ticket) return;
+            if (!data || !data.ticket) return;
             pushBtn.disabled = true;
             setStatus(ticketStatus, "Pushing to Notion…", "loading");
             try {
-              const data = await postJSON("/ticket/push", { ticket: lastTicket.ticket });
-              lastTicket.notion_url = data.notion_url;
-              renderTicketCard(container, lastTicket);
+              const res = await postJSON("/ticket/push", { ticket: data.ticket });
+              data.notion_url = res.notion_url;
+              lastTicket = data;
+              patchLatestTicketNotionInTranscript(res.notion_url);
+              renderTicketCard(container, data);
               setStatus(ticketStatus, "Pushed to Notion.", "success");
             } catch (err) {
               setStatus(ticketStatus, "Error: " + err.message, "error");
@@ -1736,6 +2632,276 @@
           });
         }
       }
+
+      function buildTicketMessageEl(msg) {
+        var wrap = document.createElement("div");
+        if (msg.role === "user") {
+          wrap.className = "msg user";
+          wrap.innerHTML = '<div class="bubble user">' + escapeHtml(msg.content) + "</div>";
+          return wrap;
+        }
+        wrap.className = "msg assistant";
+        if (msg.ticketData) {
+          renderTicketCard(wrap, msg.ticketData);
+          return wrap;
+        }
+        wrap.innerHTML =
+          '<div class="bubble assistant">' + escapeHtml(msg.content || "") + "</div>";
+        return wrap;
+      }
+
+      function hydrateTicketFromStoredChat(chat) {
+        ticketTranscript.length = 0;
+        (chat.messages || []).forEach(function (m) {
+          var entry = { role: m.role, content: m.content };
+          if (m.ticketData) entry.ticketData = m.ticketData;
+          ticketTranscript.push(entry);
+        });
+        ticketThreadInner.innerHTML = "";
+        if (!ticketTranscript.length) {
+          ticketThreadInner.innerHTML = ticketWelcomeInnerHTML();
+          ticketSuggestions.classList.remove("hidden");
+          lastTicket = null;
+        } else {
+          ticketSuggestions.classList.add("hidden");
+          ticketTranscript.forEach(function (m) {
+            ticketThreadInner.appendChild(buildTicketMessageEl(m));
+          });
+          lastTicket = null;
+          for (var j = ticketTranscript.length - 1; j >= 0; j--) {
+            if (ticketTranscript[j].ticketData) {
+              lastTicket = ticketTranscript[j].ticketData;
+              break;
+            }
+          }
+        }
+        updateTicketChatTitle();
+        scrollThreadToBottom(ticketThread);
+      }
+
+      function bindTicketHistoryListEvents(panelHost) {
+        panelHost.querySelectorAll(".qa-convo-row-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var id = btn.getAttribute("data-chat-id");
+            if (id) switchTicketChat(id);
+          });
+        });
+        panelHost.querySelectorAll(".qa-convo-row-del").forEach(function (btn) {
+          btn.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            var id = btn.getAttribute("data-del-id");
+            if (id) deleteTicketChat(id);
+          });
+        });
+      }
+
+      function refreshTicketHistoryPanel() {
+        var panelHost = document.getElementById("ticket-history-list");
+        if (!panelHost) return;
+        var sorted = ticketChatList.slice().sort(function (a, b) {
+          return chatCreatedAt(b) - chatCreatedAt(a);
+        });
+        if (!sorted.length) {
+          panelHost.innerHTML =
+            '<p class="qa-convo-empty">No drafts yet. Use <strong>New chat</strong> to start.</p>';
+          return;
+        }
+        var groups = bucketChatsByCreated(sorted);
+        var order = ["Today", "Yesterday", "Previous 7 days", "Older"];
+        var html = "";
+        order.forEach(function (label) {
+          var arr = groups[label];
+          if (!arr || !arr.length) return;
+          html +=
+            '<div class="qa-convo-group" role="group">' +
+            '<div class="qa-convo-group-label">' +
+            escapeHtml(label) +
+            "</div>";
+          arr.forEach(function (c) {
+            var activeCls = c.id === ticketActiveChatId ? " is-active" : "";
+            var safeId = escapeHtml(c.id || "");
+            var safeTitle = escapeHtml(c.title || "Draft");
+            html +=
+              '<div class="qa-convo-row' + activeCls + '" role="listitem">' +
+              '<button type="button" class="qa-convo-row-btn" data-chat-id="' +
+              safeId +
+              '">' +
+              '<span class="qa-convo-row-title">' +
+              safeTitle +
+              "</span></button>" +
+              '<button type="button" class="qa-convo-row-del" data-del-id="' +
+              safeId +
+              '" aria-label="Delete chat">' +
+              '<span class="material-symbols-outlined" aria-hidden="true">close</span>' +
+              "</button></div>";
+          });
+          html += "</div>";
+        });
+        panelHost.innerHTML = html;
+        bindTicketHistoryListEvents(panelHost);
+      }
+
+      function switchTicketChat(id) {
+        var chat = ticketChatList.find(function (c) { return c.id === id; });
+        if (!chat) return;
+        persistTicket();
+        ticketActiveChatId = id;
+        hydrateTicketFromStoredChat(chat);
+        writeTicketStorage();
+        refreshTicketHistoryPanel();
+      }
+
+      function deleteTicketChat(id) {
+        var wasActive = ticketActiveChatId === id;
+        ticketChatList = ticketChatList.filter(function (c) { return c.id !== id; });
+        if (!wasActive) {
+          writeTicketStorage();
+          refreshTicketHistoryPanel();
+          return;
+        }
+        ticketActiveChatId = ticketChatList.length ? ticketChatList[0].id : genTicketChatId();
+        var next = ticketChatList.find(function (c) { return c.id === ticketActiveChatId; });
+        if (next && next.messages && next.messages.length) {
+          hydrateTicketFromStoredChat(next);
+        } else {
+          ticketTranscript.length = 0;
+          ticketThreadInner.innerHTML = ticketWelcomeInnerHTML();
+          ticketSuggestions.classList.remove("hidden");
+          lastTicket = null;
+          updateTicketChatTitle();
+        }
+        writeTicketStorage();
+        refreshTicketHistoryPanel();
+      }
+
+      function startNewTicketChat() {
+        persistTicket();
+        ticketActiveChatId = genTicketChatId();
+        ticketTranscript.length = 0;
+        ticketThreadInner.innerHTML = ticketWelcomeInnerHTML();
+        ticketSuggestions.classList.remove("hidden");
+        lastTicket = null;
+        writeTicketStorage();
+        refreshTicketHistoryPanel();
+        updateTicketChatTitle();
+      }
+
+      function initTicketChats() {
+        try {
+          var raw = localStorage.getItem(TICKET_STORAGE_KEY);
+          var st = raw ? JSON.parse(raw) : {};
+          ticketChatList = Array.isArray(st.chats) ? st.chats : [];
+          ticketActiveChatId = typeof st.activeId === "string" ? st.activeId : "";
+        } catch (_e) {
+          ticketChatList = [];
+          ticketActiveChatId = "";
+        }
+        ticketChatList.forEach(function (c) {
+          if (c.createdAt == null) c.createdAt = c.updatedAt || Date.now();
+        });
+        ticketChatList.sort(function (a, b) {
+          return chatCreatedAt(b) - chatCreatedAt(a);
+        });
+        var found = ticketActiveChatId && ticketChatList.some(function (c) { return c.id === ticketActiveChatId; });
+        if (!found) {
+          ticketActiveChatId = ticketChatList.length ? ticketChatList[0].id : genTicketChatId();
+        }
+        var active = ticketChatList.find(function (c) { return c.id === ticketActiveChatId; });
+        if (active && active.messages && active.messages.length) {
+          hydrateTicketFromStoredChat(active);
+        } else {
+          ticketTranscript.length = 0;
+          ticketThreadInner.innerHTML = ticketWelcomeInnerHTML();
+          ticketSuggestions.classList.remove("hidden");
+          lastTicket = null;
+          updateTicketChatTitle();
+        }
+        refreshTicketHistoryPanel();
+        writeTicketStorage();
+      }
+
+      ticketInput.addEventListener("input", function () { autosize(ticketInput); });
+      ticketInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          ticketForm.requestSubmit();
+        }
+      });
+
+      var ticketNewChatBtn = document.getElementById("ticket-new-chat");
+      if (ticketNewChatBtn) {
+        ticketNewChatBtn.addEventListener("click", function () {
+          startNewTicketChat();
+          ticketInput.focus();
+        });
+      }
+
+      ticketForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const description = ticketInput.value.trim();
+        if (!description) {
+          setStatus(ticketStatus, "Describe the ticket first.", "error");
+          return;
+        }
+        dismissChrome(ticketWelcome, ticketSuggestions);
+
+        const userBubble = document.createElement("div");
+        userBubble.className = "msg user";
+        userBubble.innerHTML = '<div class="bubble user">' + escapeHtml(description) + '</div>';
+        ticketThreadInner.appendChild(userBubble);
+
+        const pending = document.createElement("div");
+        pending.className = "msg assistant";
+        pending.innerHTML =
+          '<div class="bubble assistant"><span class="typing"><span></span><span></span><span></span></span></div>';
+        ticketThreadInner.appendChild(pending);
+        scrollThreadToBottom(ticketThread);
+
+        ticketSubmit.disabled = true;
+        setStatus(ticketStatus, ticketPush.checked ? "Generating + pushing…" : "Generating…", "loading");
+        ticketInput.value = "";
+        autosize(ticketInput);
+
+        try {
+          const data = await postJSON("/ticket", {
+            description: description,
+            push_to_notion: ticketPush.checked,
+            messages: ticketTranscript.map(function (t0) {
+              return { role: t0.role, content: t0.content };
+            }),
+          });
+          const ticketPayload = {
+            ticket: data.ticket,
+            sources: data.sources,
+            notion_url: data.notion_url,
+            markdown: data.markdown,
+          };
+          lastTicket = ticketPayload;
+          renderTicketCard(pending, ticketPayload);
+          setStatus(
+            ticketStatus,
+            data.notion_url ? "Pushed to Notion." : "",
+            data.notion_url ? "success" : ""
+          );
+          ticketTranscript.push({ role: "user", content: description });
+          ticketTranscript.push({
+            role: "assistant",
+            content: data.markdown || "",
+            ticketData: ticketPayload,
+          });
+          persistTicket();
+        } catch (err) {
+          pending.innerHTML =
+            '<div class="bubble error">Error: ' + escapeHtml(err.message) + '</div>';
+          setStatus(ticketStatus, "");
+        } finally {
+          ticketSubmit.disabled = false;
+          scrollThreadToBottom(ticketThread);
+          ticketInput.focus();
+        }
+      });
+
+      initTicketChats();
 
       // ---------- Ingest tab ----------
       function formatBytes(n) {

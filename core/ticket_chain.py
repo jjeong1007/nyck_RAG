@@ -22,11 +22,13 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
 import anthropic
 from notion_client import Client as NotionClient
 from notion_client.errors import APIResponseError
+
+from core.qa_chain import _trim_chat_history
 
 from core.retriever import (
     METADATA_DATE,
@@ -151,6 +153,13 @@ NOTION_PARAGRAPH_MAX: int = 1900  # Notion limit is 2000 rich-text chars per blo
 
 TICKET_SYSTEM_PROMPT: str = (
     "You generate product tickets for an 8-person company's Notion database. "
+    "Prior conversation turns may include earlier descriptions and previously "
+    "generated ticket JSON. Use them only to interpret follow-ups (e.g. "
+    "clarifications, extra acceptance criteria). Each reply must still be ONE "
+    "new JSON object matching the schema below for the latest teammate "
+    "description and the retrieved context in the final message — do not "
+    "paste old JSON wholesale unless the user clearly asks to revise the same "
+    "ticket without new information.\n\n"
     "Output ONLY a single JSON object — no prose, no Markdown fences, no "
     "explanation. The JSON must match this exact schema:\n"
     "{\n"
@@ -859,12 +868,16 @@ class TicketChain:
         description: str,
         *,
         push_to_notion: bool = False,
+        chat_history: Optional[Sequence[Tuple[str, str]]] = None,
     ) -> TicketGeneration:
         """Build a structured ticket and optionally push it to Notion.
 
         Args:
             description: Free-form description of the feature, bug, or research item.
             push_to_notion: If True, also create a page in the ticket database.
+            chat_history: Optional prior user/assistant turns (content only). Must
+                not include the current ``description``. Retrieval still uses only
+                ``description`` as the query.
 
         Returns:
             :class:`TicketGeneration` with the ticket, supporting sources, and
@@ -884,20 +897,25 @@ class TicketChain:
 
         constraints = _ticket_generation_constraints_block()
         user_message = (
-            f"Description from teammate:\n{cleaned}\n\n"
             f"Relevant internal context (top {len(contexts)} chunks):\n"
             f"{prompt_context}\n\n"
+            f"---\n\n"
+            f"Latest description from teammate:\n{cleaned}\n\n"
         )
         if constraints:
             user_message += constraints + "\n"
         user_message += TICKET_USER_MESSAGE_SUFFIX + "Return the ticket JSON now."
+
+        history = _trim_chat_history(tuple(chat_history or ()))
+        api_messages: List[dict[str, str]] = list(history)
+        api_messages.append({"role": "user", "content": user_message})
 
         message = self._anthropic.messages.create(
             model=CLAUDE_HAIKU_MODEL,
             max_tokens=CLAUDE_MAX_TOKENS,
             temperature=CLAUDE_TEMPERATURE,
             system=TICKET_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
+            messages=api_messages,
         )
 
         raw_text = "".join(
@@ -929,17 +947,23 @@ def get_default_chain() -> TicketChain:
 
 
 def generate_ticket(
-    description: str, *, push_to_notion: bool = False
+    description: str,
+    *,
+    push_to_notion: bool = False,
+    chat_history: Optional[Sequence[Tuple[str, str]]] = None,
 ) -> TicketGeneration:
     """Top-level helper for tests and ad-hoc scripts.
 
     Args:
         description: Free-form ticket description.
         push_to_notion: If True, create a Notion page after generation.
+        chat_history: Optional prior turns (see :meth:`TicketChain.generate`).
 
     Returns:
         :class:`TicketGeneration` instance.
     """
     return get_default_chain().generate(
-        description, push_to_notion=push_to_notion
+        description,
+        push_to_notion=push_to_notion,
+        chat_history=chat_history,
     )

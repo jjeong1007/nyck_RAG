@@ -2,7 +2,7 @@
 
 Endpoints:
     - ``GET  /health``  → ``{"status": "ok"}``
-    - ``POST /qa``      → ``{answer, sources}``
+    - ``POST /qa``      → ``{answer, sources}`` (optional ``messages`` = prior chat)
     - ``POST /ticket``  → ``{ticket, sources, notion_url}``
     - ``POST /ingest/local`` (multipart) → upload + ingest PDF/DOCX/TXT/MD
     - ``POST /ingest/transcripts`` (multipart) → upload + ingest .txt transcripts
@@ -25,7 +25,7 @@ import os
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, AsyncIterator, List, Optional
+from typing import Any, AsyncIterator, List, Literal, Optional
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -131,10 +131,30 @@ async def root_redirect() -> RedirectResponse:
 # ----- Pydantic schemas ------------------------------------------------------
 
 
+class QAChatMessageModel(BaseModel):
+    """One prior turn in the Q&A thread (not including the current ``question``)."""
+
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=16000)
+
+    @field_validator("content")
+    @classmethod
+    def _strip_content(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("message content must be non-empty")
+        return cleaned
+
+
 class QARequest(BaseModel):
     """Request body for ``POST /qa``."""
 
     question: str = Field(min_length=1, max_length=4000)
+    messages: List[QAChatMessageModel] = Field(
+        default_factory=list,
+        max_length=40,
+        description="Prior user/assistant turns, in order. Omit the current question.",
+    )
 
     @field_validator("question")
     @classmethod
@@ -163,6 +183,11 @@ class TicketRequest(BaseModel):
 
     description: str = Field(min_length=1, max_length=4000)
     push_to_notion: bool = False
+    messages: List[QAChatMessageModel] = Field(
+        default_factory=list,
+        max_length=40,
+        description="Prior user/assistant turns, in order. Omit the current description.",
+    )
 
     @field_validator("description")
     @classmethod
@@ -362,7 +387,8 @@ async def qa(req: QARequest) -> QAResponse:
     """
     try:
         chain = _get_qa_chain()
-        result = chain.ask(req.question)
+        history = [(m.role, m.content) for m in req.messages]
+        result = chain.ask(req.question, chat_history=history)
         return _qa_result_to_response(result)
     except ValueError as exc:
         raise HTTPException(
@@ -385,7 +411,12 @@ async def ticket(req: TicketRequest) -> TicketResponse:
     """
     try:
         chain = _get_ticket_chain()
-        gen = chain.generate(req.description, push_to_notion=req.push_to_notion)
+        history = [(m.role, m.content) for m in req.messages]
+        gen = chain.generate(
+            req.description,
+            push_to_notion=req.push_to_notion,
+            chat_history=history,
+        )
         return _ticket_generation_to_response(gen)
     except ValueError as exc:
         raise HTTPException(
