@@ -10,6 +10,11 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
+  <!-- Material Symbols Outlined — https://fonts.google.com/icons -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block"
+    rel="stylesheet"
+  />
   <style>
     :root {
       /* Tokens pulled from the Figma developer hand-off (Chat, node 361:14644) */
@@ -25,7 +30,7 @@
       --text-soft: #7a7a82;
       --text-brand: #675b5b;
 
-      --accent: #0e6df9;
+      --accent: #0e6df9; /* Nyck primary / CTA */
       --accent-soft-bg: #e9f1ff;
       --pill-border: #3700fe;
       --profile-bg: #f0f0f0;
@@ -46,13 +51,6 @@
         rgba(255, 117, 193, 0.7) 42.16%,
         rgb(14, 109, 249) 99.46%
       );
-      /* Send button / accent gradient */
-      --gradient-button: linear-gradient(
-        135deg,
-        rgb(14, 109, 249) 0%,
-        rgb(180, 89, 208) 60%,
-        rgb(255, 117, 193) 100%
-      );
 
       --thread-max-width: 64rem;
     }
@@ -72,6 +70,25 @@
       -webkit-font-smoothing: antialiased;
     }
     button { font-family: inherit; }
+
+    /* https://github.com/google/material-design-icons/blob/master/font/README.md */
+    .material-symbols-outlined {
+      font-family: "Material Symbols Outlined";
+      font-weight: normal;
+      font-style: normal;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      font-feature-settings: "liga";
+      -webkit-font-smoothing: antialiased;
+      font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+      vertical-align: middle;
+    }
 
     /* ---------- Layout ---------- */
     .layout {
@@ -94,6 +111,27 @@
       gap: 12px;
       padding: 0 4px 14px;
     }
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+    .brand-name {
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text-brand);
+      letter-spacing: -0.005em;
+      line-height: 1.15;
+    }
+    .brand-caption {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-soft);
+      line-height: 1;
+    }
     .brand-mark {
       width: 30px;
       height: 30px;
@@ -102,18 +140,16 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
-      font-weight: 700;
-      font-size: 16px;
-      letter-spacing: -0.02em;
       box-shadow: 0 1px 2px rgba(14, 109, 249, 0.3);
       flex-shrink: 0;
     }
-    .brand-name {
-      font-weight: 700;
-      font-size: 18px;
-      color: var(--text-brand);
-      letter-spacing: -0.005em;
+    .brand-mark img {
+      width: 20px;
+      height: auto;
+      max-height: 23px;
+      display: block;
+      object-fit: contain;
+      filter: invert(1);
     }
 
     .nav-section-label {
@@ -145,12 +181,11 @@
       color: var(--accent);
     }
     .nav-btn .nav-icon {
-      width: 18px;
-      height: 18px;
-      stroke: currentColor;
-      fill: none;
-      stroke-width: 1.7;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
       flex-shrink: 0;
+      color: currentColor;
     }
 
     .sidebar-spacer { flex: 1; }
@@ -430,7 +465,7 @@
       transition: background 100ms ease;
     }
     .icon-btn:hover { background: rgba(0, 0, 0, 0.05); }
-    .icon-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+    .icon-btn .material-symbols-outlined { font-size: 16px; width: 16px; height: 16px; color: currentColor; }
 
     .checkbox {
       display: inline-flex;
@@ -447,7 +482,7 @@
       appearance: none;
       border: 0;
       cursor: pointer;
-      background: var(--gradient-button);
+      background: var(--accent);
       color: #fff;
       width: 40px;
       height: 40px;
@@ -455,13 +490,19 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      transition: transform 80ms ease, opacity 80ms ease, filter 100ms ease;
-      box-shadow: 0 4px 14px rgba(180, 89, 208, 0.35);
+      transition: transform 80ms ease, opacity 80ms ease, filter 100ms ease, background 100ms ease;
+      box-shadow: 0 4px 14px rgba(14, 109, 249, 0.35);
     }
     .send-btn:hover:not(:disabled) { transform: scale(1.04); filter: brightness(1.04); }
     .send-btn:active:not(:disabled) { transform: scale(0.96); }
     .send-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
-    .send-btn svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2.2; }
+    .send-btn .send-btn-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+      color: #fff;
+      font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;
+    }
 
     .status-msg { font-size: 12px; color: var(--text-soft); }
     .status-msg.error { color: var(--danger); }
@@ -537,6 +578,14 @@
       padding: 8px 14px;
       border-radius: var(--radius-sm);
       transition: background 100ms ease, border-color 100ms ease, opacity 100ms ease, filter 100ms ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button.action .material-symbols-outlined {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
     }
     button.action.secondary {
       background: #fff;
@@ -545,8 +594,12 @@
     }
     button.action.secondary:hover:not(:disabled) { background: #fafafa; }
     button.action.primary {
-      background: var(--gradient-button);
+      background: var(--accent);
       border: 0;
+      color: #fff;
+      box-shadow: 0 1px 2px rgba(14, 109, 249, 0.2);
+    }
+    button.action.primary .material-symbols-outlined {
       color: #fff;
     }
     button.action.primary:hover:not(:disabled) { filter: brightness(1.05); }
@@ -612,9 +665,25 @@
       justify-content: center;
       flex-shrink: 0;
     }
-    .ingest-icon svg {
-      width: 18px; height: 18px;
-      stroke: currentColor; fill: none; stroke-width: 1.7;
+    .ingest-icon .ingest-card-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      color: currentColor;
+    }
+    .ingest-icon .ingest-discord-logo {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      display: block;
+      color: #5865f2;
+    }
+    .ingest-icon .ingest-notion-logo {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      display: block;
+      color: #191919;
     }
     .ingest-meta h2 {
       margin: 0 0 2px 0;
@@ -700,10 +769,16 @@
       background: transparent;
       cursor: pointer;
       color: var(--text-soft);
-      font-size: 16px;
-      line-height: 1;
-      padding: 2px 6px;
+      padding: 2px 4px;
       border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ingest-filelist .file-row .file-remove .material-symbols-outlined {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
     }
     .ingest-filelist .file-row .file-remove:hover {
       background: rgba(0,0,0,0.05);
@@ -778,6 +853,140 @@
     }
     .ingest-result li { margin: 2px 0; }
 
+    /* ---------- Source library tab ---------- */
+    .sources-scroll {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+      padding: 28px 24px 32px;
+    }
+    .sources-inner {
+      width: 100%;
+      max-width: var(--thread-max-width);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .sources-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .sources-toolbar h1 {
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0;
+      color: var(--text-heading);
+    }
+    .sources-toolbar p {
+      margin: 4px 0 0 0;
+      font-size: 14px;
+      color: var(--text-soft);
+      max-width: 560px;
+    }
+    .sources-banner {
+      font-size: 13px;
+      color: var(--text-soft);
+      padding: 10px 14px;
+      background: #fafafa;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .sources-banner.error {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #991b1b;
+    }
+    .sources-banner strong {
+      color: var(--text-body);
+      font-weight: 600;
+    }
+    .sources-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .sources-cat {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+    .sources-cat-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #fafafa;
+      border-bottom: 1px solid var(--border);
+    }
+    .sources-cat-head h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-heading);
+    }
+    .sources-cat-meta {
+      font-size: 12px;
+      color: var(--text-soft);
+      font-variant-numeric: tabular-nums;
+    }
+    .sources-cat-meta code {
+      background: #f4f4f5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .sources-table-wrap { overflow-x: auto; }
+    table.sources-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    table.sources-table th,
+    table.sources-table td {
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    table.sources-table th {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      background: #fff;
+    }
+    table.sources-table tr:last-child td { border-bottom: 0; }
+    table.sources-table td.num {
+      font-variant-numeric: tabular-nums;
+      color: var(--text-soft);
+      width: 6rem;
+    }
+    table.sources-table td.sources-dl {
+      white-space: nowrap;
+      width: 6.5rem;
+    }
+    a.sources-download {
+      color: var(--accent);
+      font-weight: 500;
+      text-decoration: none;
+    }
+    a.sources-download:hover { text-decoration: underline; }
+
+    .sources-empty {
+      margin: 0;
+      padding: 24px 16px;
+      text-align: center;
+      color: var(--text-soft);
+      font-size: 14px;
+    }
+
     .hidden { display: none !important; }
 
     ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -810,30 +1019,33 @@
   <div class="layout">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark" aria-hidden="true">N</div>
-        <div class="brand-name">Nyck AI</div>
+        <div class="brand-mark" aria-hidden="true">
+          <img src="nyck-brand-mark.png" alt="" width="86" height="98" decoding="async" />
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">Nyck AI</div>
+          <span class="brand-caption">Admin</span>
+        </div>
       </div>
 
       <div class="nav-section-label">Chat</div>
       <button class="nav-btn active" data-tab="qa" type="button">
-        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M21 12a8 8 0 1 1-3.5-6.6L21 4v6h-6" stroke-linecap="round" stroke-linejoin="round"></path>
-        </svg>
+        <span class="material-symbols-outlined nav-icon" aria-hidden="true">chat</span>
         Q&amp;A Assistant
       </button>
       <button class="nav-btn" data-tab="ticket" type="button">
-        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M9 11h6M9 15h4M5 4h14a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2z" stroke-linecap="round" stroke-linejoin="round"></path>
-        </svg>
+        <span class="material-symbols-outlined nav-icon" aria-hidden="true">assignment</span>
         Generate Ticket
       </button>
 
       <div class="nav-section-label">Knowledge</div>
       <button class="nav-btn" data-tab="ingest" type="button">
-        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 5v14M5 12l7 7 7-7" stroke-linecap="round" stroke-linejoin="round"></path>
-        </svg>
+        <span class="material-symbols-outlined nav-icon" aria-hidden="true">download</span>
         Ingest Sources
+      </button>
+      <button class="nav-btn" data-tab="sources" type="button">
+        <span class="material-symbols-outlined nav-icon" aria-hidden="true">library_books</span>
+        Source library
       </button>
 
       <div class="sidebar-spacer"></div>
@@ -875,7 +1087,7 @@
                   <span id="qa-status" class="status-msg"></span>
                 </div>
                 <button id="qa-submit" class="send-btn" type="submit" aria-label="Send">
-                  <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  <span class="material-symbols-outlined send-btn-icon" aria-hidden="true">arrow_upward</span>
                 </button>
               </div>
             </form>
@@ -912,7 +1124,7 @@
                   <span id="ticket-status" class="status-msg"></span>
                 </div>
                 <button id="ticket-submit" class="send-btn" type="submit" aria-label="Generate">
-                  <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  <span class="material-symbols-outlined send-btn-icon" aria-hidden="true">arrow_upward</span>
                 </button>
               </div>
             </form>
@@ -932,7 +1144,7 @@
               <article class="ingest-card" data-card="local">
                 <div class="ingest-card-head">
                   <div class="ingest-icon">
-                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="material-symbols-outlined ingest-card-icon" aria-hidden="true">description</span>
                   </div>
                   <div class="ingest-meta">
                     <h2>Documents</h2>
@@ -951,7 +1163,10 @@
 
                 <div class="ingest-card-foot">
                   <span id="local-status" class="status-msg"></span>
-                  <button id="local-submit" class="action primary" type="button" disabled>Ingest documents</button>
+                  <button id="local-submit" class="action primary" type="button" disabled>
+                    <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
+                    Ingest documents
+                  </button>
                 </div>
               </article>
 
@@ -959,7 +1174,7 @@
               <article class="ingest-card" data-card="transcripts">
                 <div class="ingest-card-head">
                   <div class="ingest-icon">
-                    <svg viewBox="0 0 24 24"><path d="M12 1v11m0 0a4 4 0 0 1-4-4V5a4 4 0 0 1 8 0v3a4 4 0 0 1-4 4z M19 10a7 7 0 0 1-14 0 M12 19v4 M8 23h8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span class="material-symbols-outlined ingest-card-icon" aria-hidden="true">mic</span>
                   </div>
                   <div class="ingest-meta">
                     <h2>Sales Call Transcripts</h2>
@@ -978,7 +1193,10 @@
 
                 <div class="ingest-card-foot">
                   <span id="transcripts-status" class="status-msg"></span>
-                  <button id="transcripts-submit" class="action primary" type="button" disabled>Ingest transcripts</button>
+                  <button id="transcripts-submit" class="action primary" type="button" disabled>
+                    <span class="material-symbols-outlined" aria-hidden="true">audio_file</span>
+                    Ingest transcripts
+                  </button>
                 </div>
               </article>
 
@@ -986,7 +1204,9 @@
               <article class="ingest-card" data-card="discord">
                 <div class="ingest-card-head">
                   <div class="ingest-icon">
-                    <svg viewBox="0 0 24 24"><path d="M9 8h.01M15 8h.01 M5 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3l-3 3-3-3H7a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="ingest-discord-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                      <path fill="currentColor" d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                    </svg>
                   </div>
                   <div class="ingest-meta">
                     <h2>Discord Exports</h2>
@@ -1005,7 +1225,10 @@
 
                 <div class="ingest-card-foot">
                   <span id="discord-status" class="status-msg"></span>
-                  <button id="discord-submit" class="action primary" type="button" disabled>Ingest exports</button>
+                  <button id="discord-submit" class="action primary" type="button" disabled>
+                    <span class="material-symbols-outlined" aria-hidden="true">data_object</span>
+                    Ingest exports
+                  </button>
                 </div>
               </article>
 
@@ -1013,7 +1236,9 @@
               <article class="ingest-card" data-card="notion">
                 <div class="ingest-card-head">
                   <div class="ingest-icon">
-                    <svg viewBox="0 0 24 24"><path d="M3 5l3-2h13a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6 M7 5v14 M11 9v8l5-8v8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="ingest-notion-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                      <path fill="currentColor" d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.84-.606-1.027-.56-2.429-.466l-13.11 1.18c-.314 0-.42.28-.862.84zm.84 1.747v12.818c0 .887.42 1.214 1.364 1.167l14.513-.84c.944-.047 1.306-.327 1.306-1.214V6.165c0-.887-.468-.933-1.214-.793L6.663 6.61c-.747.14-1.36.467-1.36 1.345zm14.074.887c.093.42 0 .84-.42.887l-.647.14v9.457c-.56.327-.793.14-.987-.094l-3.227-3.84-1.214 1.027v3.133c0 .42-.187.653-.653.699l-1.96.14c-.047-.14 0-.513.14-.7l.84-.607V9.79l-1.027-.093c-.093-.42.14-.887.513-.933l2.286-.187 3.134 4.58v-3.633l-.652-.047c-.094-.514.28-.887.746-.933l1.961-.14zm-18.12 11.46c0 .887.42 1.214 1.364 1.167l14.606-.84c.944-.047 1.306-.327 1.306-1.214v-1.636l-16.07 1.214c-.888.047-1.213.327-1.213.933v.214z"/>
+                    </svg>
                   </div>
                   <div class="ingest-meta">
                     <h2>Notion Pages &amp; Databases</h2>
@@ -1036,9 +1261,32 @@
 
                 <div class="ingest-card-foot">
                   <span id="notion-status" class="status-msg"></span>
-                  <button id="notion-submit" class="action primary" type="button">Ingest from Notion</button>
+                  <button id="notion-submit" class="action primary" type="button">
+                    <span class="material-symbols-outlined" aria-hidden="true">cloud_sync</span>
+                    Ingest from Notion
+                  </button>
                 </div>
               </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- Source library tab -->
+        <section id="tab-sources" class="tab hidden" style="display: none;">
+          <div class="sources-scroll">
+            <div class="sources-inner">
+              <div class="sources-toolbar">
+                <div>
+                  <h1>Source library</h1>
+                  <p>Everything currently in your Pinecone index, grouped by ingest category (same labels as Q&amp;A citations). Re-ingesting the same file adds more chunks; this view rolls them up per file name. Use <strong>Export → Download</strong> to merge all chunks for a source into one Markdown file (retrieval splits originals into pieces).</p>
+                </div>
+                <button type="button" class="action secondary" id="sources-refresh">
+                  <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                  Refresh
+                </button>
+              </div>
+              <div id="sources-banner" class="sources-banner" aria-live="polite"></div>
+              <div id="sources-grid" class="sources-grid"></div>
             </div>
           </div>
         </section>
@@ -1080,6 +1328,7 @@
         qa: document.getElementById("tab-qa"),
         ticket: document.getElementById("tab-ticket"),
         ingest: document.getElementById("tab-ingest"),
+        sources: document.getElementById("tab-sources"),
       };
       function showTab(name) {
         Object.keys(tabs).forEach(function (k) {
@@ -1090,12 +1339,94 @@
         document.querySelectorAll(".nav-btn").forEach(function (b) {
           b.classList.toggle("active", b.getAttribute("data-tab") === name);
         });
+        if (name === "sources") loadSourcesPanel();
       }
       document.querySelectorAll(".nav-btn").forEach(function (btn) {
         btn.addEventListener("click", function () {
           showTab(btn.getAttribute("data-tab"));
         });
       });
+
+      // ---------- Source library ----------
+      const sourcesBanner = document.getElementById("sources-banner");
+      const sourcesGrid = document.getElementById("sources-grid");
+      const sourcesRefresh = document.getElementById("sources-refresh");
+
+      async function loadSourcesPanel() {
+        sourcesBanner.classList.remove("error");
+        sourcesBanner.innerHTML = "Loading inventory from Pinecone…";
+        sourcesGrid.innerHTML = "";
+        try {
+          const resp = await fetch(apiUrl("/sources"));
+          const text = await resp.text();
+          let data;
+          try {
+            data = text ? JSON.parse(text) : {};
+          } catch (_e) {
+            data = { detail: text };
+          }
+          if (!resp.ok) {
+            const detail = data && data.detail != null ? data.detail : text;
+            const msg = typeof detail === "string" ? detail : JSON.stringify(detail);
+            throw new Error(msg || "Request failed");
+          }
+          const cats = Array.isArray(data.categories) ? data.categories : [];
+          const scanned = data.total_vectors_scanned != null ? data.total_vectors_scanned : 0;
+          const truncated = !!data.truncated;
+          var ban = "<strong>" + scanned + "</strong> vector chunk(s) scanned.";
+          if (truncated) {
+            ban += " <strong>Partial list</strong> — set <code>SOURCE_INVENTORY_MAX_VECTORS</code> higher or remove the cap to scan the full index.";
+          }
+          sourcesBanner.innerHTML = ban;
+
+          if (!cats.length) {
+            sourcesGrid.innerHTML = "<p class=\"sources-empty\">No vectors found. Use <strong>Ingest Sources</strong> to add content.</p>";
+            return;
+          }
+
+          sourcesGrid.innerHTML = cats.map(function (cat) {
+            var rows = (cat.sources || []).map(function (s) {
+              var dl =
+                apiUrl("/sources/export?source_type=" + encodeURIComponent(cat.category || "") +
+                  "&file_name=" + encodeURIComponent(s.file_name || ""));
+              return (
+                "<tr>" +
+                  "<td>" + escapeHtml(s.file_name || "") + "</td>" +
+                  "<td>" + escapeHtml(s.date || "—") + "</td>" +
+                  "<td class=\"num\">" + Number(s.chunk_count || 0) + "</td>" +
+                  "<td class=\"sources-dl\"><a class=\"sources-download\" href=\"" + escapeHtml(dl) + "\" download>Download</a></td>" +
+                "</tr>"
+              );
+            }).join("");
+            return (
+              "<article class=\"sources-cat\">" +
+                "<div class=\"sources-cat-head\">" +
+                  "<h2>" + escapeHtml(cat.label || cat.category || "") + "</h2>" +
+                  "<div class=\"sources-cat-meta\">" +
+                    "<code>" + escapeHtml(cat.category || "") + "</code> · " +
+                    Number(cat.total_chunks || 0) + " chunk(s)" +
+                  "</div>" +
+                "</div>" +
+                "<div class=\"sources-table-wrap\">" +
+                  "<table class=\"sources-table\">" +
+                    "<thead><tr><th>Name</th><th>Date</th><th>Chunks</th><th>Export</th></tr></thead>" +
+                    "<tbody>" + rows + "</tbody>" +
+                  "</table>" +
+                "</div>" +
+              "</article>"
+            );
+          }).join("");
+        } catch (err) {
+          sourcesBanner.classList.add("error");
+          sourcesBanner.textContent = "Could not load sources: " + err.message;
+        }
+      }
+
+      if (sourcesRefresh) {
+        sourcesRefresh.addEventListener("click", function () {
+          loadSourcesPanel();
+        });
+      }
 
       // ---------- Health check ----------
       const healthDot = document.getElementById("health-dot");
@@ -1361,10 +1692,12 @@
                 '<div class="source-chips">' + chipsHtml + '</div>'
               : '') +
             '<div class="ticket-actions">' +
-              '<button class="action secondary" data-role="copy" type="button">Copy as Markdown</button>' +
+              '<button class="action secondary" data-role="copy" type="button">' +
+              '<span class="material-symbols-outlined" aria-hidden="true">content_copy</span>Copy as Markdown</button>' +
               (data.notion_url
                 ? '<a class="notion-link" href="' + escapeHtml(data.notion_url) + '" target="_blank" rel="noopener">Open in Notion ↗</a>'
-                : '<button class="action primary" data-role="push" type="button">Push to Notion</button>') +
+                : '<button class="action primary" data-role="push" type="button">' +
+                  '<span class="material-symbols-outlined" aria-hidden="true">upload</span>Push to Notion</button>') +
             '</div>' +
           '</div>';
 
@@ -1449,7 +1782,7 @@
               '<div class="file-row">' +
                 '<span class="file-name">' + escapeHtml(f.name) + '</span>' +
                 '<span class="file-size">' + formatBytes(f.size) + '</span>' +
-                '<button class="file-remove" data-i="' + i + '" type="button" aria-label="Remove">×</button>' +
+                '<button class="file-remove" data-i="' + i + '" type="button" aria-label="Remove"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>' +
               '</div>'
             );
           }).join("");

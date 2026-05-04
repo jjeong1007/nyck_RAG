@@ -8,6 +8,8 @@ Endpoints:
     - ``POST /ingest/transcripts`` (multipart) → upload + ingest .txt transcripts
     - ``POST /ingest/discord`` (multipart) → upload + ingest DiscordChatExporter JSON
     - ``POST /ingest/notion`` → ingest Notion pages / databases by ID
+    - ``GET  /sources``  → Pinecone metadata rollup by ``source_type`` / file
+    - ``GET  /sources/export`` → merged chunk text for one source (Markdown download)
     - ``GET  /``         → redirects to ``/ui/``
     - Static frontend mounted at ``/ui`` (vanilla HTML/JS).
 
@@ -26,13 +28,27 @@ from pathlib import Path
 from typing import Any, AsyncIterator, List, Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import (
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from core.qa_chain import QAChain, QAResult
+from core.source_inventory import (
+    build_source_export,
+    build_source_inventory,
+    source_export_attachment_filename,
+)
 from core.ticket_chain import (
     Ticket,
     TicketChain,
@@ -186,6 +202,31 @@ class TicketResponse(BaseModel):
     markdown: str
 
 
+class SourceRowModel(BaseModel):
+    """One logical source (file / page) within a category."""
+
+    file_name: str
+    date: str = ""
+    chunk_count: int
+
+
+class SourceCategoryModel(BaseModel):
+    """Sources grouped by ingest category (``source_type`` metadata)."""
+
+    category: str
+    label: str
+    total_chunks: int
+    sources: List[SourceRowModel]
+
+
+class SourcesInventoryResponse(BaseModel):
+    """Response for ``GET /sources`` — inventory derived from Pinecone metadata."""
+
+    categories: List[SourceCategoryModel]
+    total_vectors_scanned: int
+    truncated: bool = False
+
+
 # ----- Chain accessors (lazy singletons) ------------------------------------
 
 
@@ -243,6 +284,74 @@ def _ticket_generation_to_response(gen: TicketGeneration) -> TicketResponse:
 async def health() -> dict[str, str]:
     """Liveness check used by Railway and the UI."""
     return {"status": "ok"}
+
+
+@app.get("/sources", response_model=SourcesInventoryResponse)
+async def sources_inventory() -> SourcesInventoryResponse:
+    """List ingested sources grouped by category (Pinecone ``source_type``).
+
+    Scans vector metadata in the configured index/namespace; can be slow on
+    very large indexes. Optional env ``SOURCE_INVENTORY_MAX_VECTORS`` caps work.
+    """
+    try:
+        payload = build_source_inventory()
+        return SourcesInventoryResponse.model_validate(payload)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    except Exception as exc:
+        logger.exception("Source inventory failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Could not read Pinecone inventory: {exc}",
+        ) from exc
+
+
+@app.get("/sources/export")
+async def export_merged_source(
+    source_type: str = Query(..., min_length=1, max_length=128),
+    file_name: str = Query(..., min_length=1, max_length=2048),
+) -> Response:
+    """Download merged chunk text for one ingested source as a Markdown file.
+
+    Scans the **full** Pinecone index (not capped by ``SOURCE_INVENTORY_MAX_VECTORS``)
+    to assemble every chunk whose metadata matches the given ``source_type`` and
+    exact ``file_name``.
+    """
+    fn = file_name.strip()
+    if ".." in fn or "\x00" in fn:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file_name.",
+        )
+    try:
+        body = build_source_export(source_type.strip(), fn)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    except Exception as exc:
+        logger.exception("Source export failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Could not export source: {exc}",
+        ) from exc
+
+    if not body.strip():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No chunks found for this source_type and file_name.",
+        )
+
+    attach_name = source_export_attachment_filename(fn)
+    return Response(
+        content=body,
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{attach_name}"',
+        },
+    )
 
 
 @app.post("/qa", response_model=QAResponse)
