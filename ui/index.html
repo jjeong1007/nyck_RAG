@@ -1050,7 +1050,30 @@
     (function () {
       "use strict";
 
-      const API_URL = (window.API_URL || "http://localhost:8000").replace(/\/+$/, "");
+      // When UI is served from FastAPI (e.g. /ui/ on Railway), use same-origin
+      // URLs (/health, /qa) so the browser always hits this deployment — never
+      // localhost. Set window.API_URL only for split hosting (e.g. GitHub Pages).
+      function apiBasePrefix() {
+        if (typeof window.API_URL === "string" && window.API_URL.trim()) {
+          return window.API_URL.trim().replace(/\/+$/, "");
+        }
+        var p = window.location && window.location.protocol;
+        if (p === "http:" || p === "https:") {
+          return "";
+        }
+        return "http://localhost:8000";
+      }
+      var API_PREFIX = apiBasePrefix();
+      function apiUrl(path) {
+        var p = path.charAt(0) === "/" ? path : "/" + path;
+        return API_PREFIX ? API_PREFIX + p : p;
+      }
+      function apiDisplayHost() {
+        if (API_PREFIX) {
+          return API_PREFIX.replace(/^https?:\/\//, "");
+        }
+        return (window.location && window.location.host) || "localhost";
+      }
 
       // ---------- Tabs ----------
       const tabs = {
@@ -1078,17 +1101,17 @@
       const healthDot = document.getElementById("health-dot");
       const healthTitle = document.getElementById("health-title");
       const healthSub = document.getElementById("health-sub");
-      fetch(API_URL + "/health")
+      fetch(apiUrl("/health"))
         .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
         .then(function () {
           healthDot.classList.add("ok");
           healthTitle.textContent = "API online";
-          healthSub.textContent = API_URL.replace(/^https?:\/\//, "");
+          healthSub.textContent = apiDisplayHost();
         })
         .catch(function () {
           healthDot.classList.add("bad");
           healthTitle.textContent = "API unreachable";
-          healthSub.textContent = API_URL.replace(/^https?:\/\//, "");
+          healthSub.textContent = apiDisplayHost();
         });
 
       // ---------- Helpers ----------
@@ -1120,7 +1143,7 @@
         );
       }
       async function postJSON(path, body) {
-        const resp = await fetch(API_URL + path, {
+        const resp = await fetch(apiUrl(path), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -1498,7 +1521,7 @@
       }
 
       async function postUpload(path, formData) {
-        const resp = await fetch(API_URL + path, { method: "POST", body: formData });
+        const resp = await fetch(apiUrl(path), { method: "POST", body: formData });
         const text = await resp.text();
         let data;
         try { data = text ? JSON.parse(text) : {}; } catch (_e) { data = { detail: text }; }
