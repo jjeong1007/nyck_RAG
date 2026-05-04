@@ -1025,13 +1025,19 @@
     .sources-table-wrap { overflow-x: auto; }
     table.sources-table {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
       font-size: 13px;
     }
+    table.sources-table col.sources-col-name { width: 40%; }
+    table.sources-table col.sources-col-date { width: 20%; }
+    table.sources-table col.sources-col-chunks { width: 14%; }
+    table.sources-table col.sources-col-actions { width: 26%; }
     table.sources-table th,
     table.sources-table td {
       text-align: left;
-      padding: 10px 14px;
+      vertical-align: middle;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border-soft);
     }
     table.sources-table th {
@@ -1043,14 +1049,37 @@
       background: #fff;
     }
     table.sources-table tr:last-child td { border-bottom: 0; }
-    table.sources-table td.num {
+    table.sources-table td.sources-col-name {
+      word-wrap: break-word;
+      word-break: break-word;
+    }
+    table.sources-table td.sources-col-date {
+      color: var(--text-soft);
+    }
+    table.sources-table td.sources-col-chunks {
       font-variant-numeric: tabular-nums;
       color: var(--text-soft);
-      width: 6rem;
+      text-align: right;
+      padding-right: 20px;
     }
-    table.sources-table td.sources-dl {
+    table.sources-table th.sources-col-chunks {
+      text-align: right;
+      padding-right: 20px;
+    }
+    table.sources-table td.sources-row-actions {
       white-space: nowrap;
-      width: 6.5rem;
+      text-align: right;
+      padding-left: 12px;
+    }
+    table.sources-table th.sources-col-actions {
+      text-align: right;
+    }
+    .sources-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: nowrap;
+      gap: 8px 20px;
     }
     a.sources-download {
       color: var(--accent);
@@ -1058,6 +1087,38 @@
       text-decoration: none;
     }
     a.sources-download:hover { text-decoration: underline; }
+    button.sources-delete-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-sm);
+      padding: 0;
+      margin: 0;
+      color: var(--danger);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background-color 0.15s ease;
+    }
+    button.sources-delete-btn:hover {
+      background: rgba(220, 38, 38, 0.08);
+    }
+    button.sources-delete-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    button.sources-delete-btn .material-symbols-outlined {
+      font-size: 22px;
+    }
+    button.sources-delete-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      background: transparent;
+    }
 
     .sources-empty {
       margin: 0;
@@ -1730,7 +1791,7 @@
               <div class="sources-toolbar">
                 <div>
                   <h1>Source library</h1>
-                  <p>Everything currently in your Pinecone index, grouped by ingest category (same labels as Q&amp;A citations). Re-ingesting the same file adds more chunks; this view rolls them up per file name. Use <strong>Export → Download</strong> to merge all chunks for a source into one Markdown file (retrieval splits originals into pieces).</p>
+                  <p>Everything currently in your Pinecone index, grouped by ingest category (same labels as Q&amp;A citations). Re-ingesting the same file adds more chunks; this view rolls them up per file name. Use <strong>Download</strong> to merge all chunks for a source into one Markdown file. Use <strong>Remove</strong> to delete every chunk for that source from the index (cannot be undone).</p>
                 </div>
                 <button type="button" class="action secondary" id="sources-refresh">
                   <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
@@ -1891,6 +1952,71 @@
       const sourcesGrid = document.getElementById("sources-grid");
       const sourcesRefresh = document.getElementById("sources-refresh");
 
+      async function deleteSourceApi(sourceType, fileName) {
+        var path =
+          "/sources?source_type=" +
+          encodeURIComponent(sourceType) +
+          "&file_name=" +
+          encodeURIComponent(fileName);
+        const resp = await fetch(apiUrl(path), { method: "DELETE" });
+        const text = await resp.text();
+        let data;
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch (_e) {
+          data = { detail: text };
+        }
+        if (!resp.ok) {
+          const detail = data && data.detail != null ? data.detail : text;
+          const msg = typeof detail === "string" ? detail : JSON.stringify(detail);
+          throw new Error(msg || "Request failed");
+        }
+        return data;
+      }
+
+      if (sourcesGrid) {
+        sourcesGrid.addEventListener("click", function (e) {
+          var btn = e.target && e.target.closest && e.target.closest(".sources-delete-btn");
+          if (!btn || !sourcesGrid.contains(btn)) return;
+          e.preventDefault();
+          var st = btn.getAttribute("data-source-type") || "";
+          var fn = btn.getAttribute("data-file-name") || "";
+          if (!st || !fn) return;
+          var confirmLabel = fn.length > 72 ? fn.slice(0, 69) + "…" : fn;
+          if (
+            !window.confirm(
+              "Remove all Pinecone vector chunks for this source?\n\n" +
+                confirmLabel +
+                "\n(category: " +
+                st +
+                ")\n\nThis cannot be undone."
+            )
+          ) {
+            return;
+          }
+          btn.disabled = true;
+          deleteSourceApi(st, fn)
+            .then(function (res) {
+              sourcesBanner.classList.remove("error");
+              var n = res && res.deleted != null ? Number(res.deleted) : 0;
+              sourcesBanner.innerHTML =
+                "<strong>Removed</strong> " +
+                n +
+                " chunk(s) for " +
+                escapeHtml(fn) +
+                ".";
+              return loadSourcesPanel();
+            })
+            .catch(function (err) {
+              sourcesBanner.classList.add("error");
+              sourcesBanner.textContent = "Delete failed: " + err.message;
+            })
+            .finally(function () {
+              btn.disabled = false;
+            });
+        });
+      }
+
       async function loadSourcesPanel() {
         sourcesBanner.classList.remove("error");
         sourcesBanner.innerHTML = "Loading inventory from Pinecone…";
@@ -1930,10 +2056,21 @@
                   "&file_name=" + encodeURIComponent(s.file_name || ""));
               return (
                 "<tr>" +
-                  "<td>" + escapeHtml(s.file_name || "") + "</td>" +
-                  "<td>" + escapeHtml(s.date || "—") + "</td>" +
-                  "<td class=\"num\">" + Number(s.chunk_count || 0) + "</td>" +
-                  "<td class=\"sources-dl\"><a class=\"sources-download\" href=\"" + escapeHtml(dl) + "\" download>Download</a></td>" +
+                  "<td class=\"sources-col-name\">" + escapeHtml(s.file_name || "") + "</td>" +
+                  "<td class=\"sources-col-date\">" + escapeHtml(s.date || "—") + "</td>" +
+                  "<td class=\"sources-col-chunks\">" + Number(s.chunk_count || 0) + "</td>" +
+                  "<td class=\"sources-row-actions\">" +
+                  "<div class=\"sources-actions\">" +
+                  "<a class=\"sources-download\" href=\"" + escapeHtml(dl) + "\" download>Download</a>" +
+                  "<button type=\"button\" class=\"sources-delete-btn\" title=\"Remove from index\" aria-label=\"Remove source from knowledge base\" data-source-type=\"" +
+                  escapeHtml(cat.category || "") +
+                  "\" data-file-name=\"" +
+                  escapeHtml(s.file_name || "") +
+                  "\">" +
+                  "<span class=\"material-symbols-outlined\" aria-hidden=\"true\">delete</span>" +
+                  "</button>" +
+                  "</div>" +
+                  "</td>" +
                 "</tr>"
               );
             }).join("");
@@ -1948,7 +2085,15 @@
                 "</div>" +
                 "<div class=\"sources-table-wrap\">" +
                   "<table class=\"sources-table\">" +
-                    "<thead><tr><th>Name</th><th>Date</th><th>Chunks</th><th>Export</th></tr></thead>" +
+                    "<colgroup>" +
+                    "<col class=\"sources-col-name\" /><col class=\"sources-col-date\" /><col class=\"sources-col-chunks\" /><col class=\"sources-col-actions\" />" +
+                    "</colgroup>" +
+                    "<thead><tr>" +
+                    "<th class=\"sources-col-name\" scope=\"col\">Name</th>" +
+                    "<th class=\"sources-col-date\" scope=\"col\">Date</th>" +
+                    "<th class=\"sources-col-chunks\" scope=\"col\">Chunks</th>" +
+                    "<th class=\"sources-col-actions\" scope=\"col\">Actions</th>" +
+                    "</tr></thead>" +
                     "<tbody>" + rows + "</tbody>" +
                   "</table>" +
                 "</div>" +

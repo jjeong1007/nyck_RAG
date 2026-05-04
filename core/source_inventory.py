@@ -8,6 +8,9 @@ counts. Intended for a small-team KB; very large indexes may be slow — see
 Also provides :func:`build_source_export` to merge all chunks for one
 ``(source_type, file_name)`` into a downloadable Markdown file (chunk order is
 best-effort using LlamaIndex ``start_char_idx`` when present).
+
+:func:`delete_source_vectors` walks the index the same way and removes every
+vector that matches a logical source (all chunks for that file/category).
 """
 
 from __future__ import annotations
@@ -44,6 +47,7 @@ CATEGORY_LABELS: dict[str, str] = {
 
 LIST_PAGE_SIZE: int = 100
 FETCH_BATCH_SIZE: int = 200
+DELETE_VECTOR_BATCH: int = 1000
 
 ENV_SOURCE_INVENTORY_MAX_VECTORS: str = "SOURCE_INVENTORY_MAX_VECTORS"
 
@@ -168,6 +172,61 @@ def build_source_export(source_type: str, file_name: str) -> str:
         f"| chunks={len(parts)} -->\n\n"
     )
     return header + "\n\n".join(parts)
+
+
+def delete_source_vectors(source_type: str, file_name: str) -> int:
+    """Delete every Pinecone vector whose metadata matches one logical source.
+
+    Uses the same full-index list/fetch walk as :func:`build_source_export`.
+    Large indexes may take noticeable time.
+
+    Args:
+        source_type: Ingest category (e.g. ``local``, ``notion``).
+        file_name: Exact ``file_name`` metadata for that source.
+
+    Returns:
+        Number of vectors removed (``0`` if none matched).
+
+    Raises:
+        ValueError: Missing Pinecone configuration, or blank/invalid identifiers.
+    """
+    st_target = (source_type or "").strip()
+    fn_target = (file_name or "").strip()
+    if not st_target or not fn_target:
+        raise ValueError("source_type and file_name must be non-empty.")
+    if "\x00" in fn_target or "\n" in fn_target or "\r" in fn_target:
+        raise ValueError("Invalid file_name.")
+
+    index = _pinecone_index()
+    ns_kw = _list_namespace_kwargs()
+    list_kwargs: dict[str, Any] = {"limit": LIST_PAGE_SIZE, **ns_kw}
+
+    to_delete: list[str] = []
+
+    for id_batch in index.list(**list_kwargs):
+        if not id_batch:
+            continue
+        for i in range(0, len(id_batch), FETCH_BATCH_SIZE):
+            slice_ids = id_batch[i : i + FETCH_BATCH_SIZE]
+            fetched = index.fetch(ids=slice_ids, **ns_kw)
+            vectors = getattr(fetched, "vectors", None) or {}
+            for vid in slice_ids:
+                vec = vectors.get(vid)
+                meta_obj = getattr(vec, "metadata", None) if vec is not None else None
+                if not isinstance(meta_obj, dict):
+                    continue
+                st, fn, _dt = _parse_vector_metadata(meta_obj)
+                if st == st_target and fn == fn_target:
+                    to_delete.append(vid)
+
+    if not to_delete:
+        return 0
+
+    for i in range(0, len(to_delete), DELETE_VECTOR_BATCH):
+        batch = to_delete[i : i + DELETE_VECTOR_BATCH]
+        index.delete(ids=batch, **ns_kw)
+
+    return len(to_delete)
 
 
 def _safe_download_basename(file_name: str) -> str:

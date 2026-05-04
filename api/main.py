@@ -10,6 +10,7 @@ Endpoints:
     - ``POST /ingest/notion`` → ingest Notion pages / databases by ID
     - ``GET  /sources``  → Pinecone metadata rollup by ``source_type`` / file
     - ``GET  /sources/export`` → merged chunk text for one source (Markdown download)
+    - ``DELETE /sources`` → remove all vectors for one ``source_type`` + ``file_name``
     - ``GET  /``         → redirects to ``/ui/``
     - Static frontend mounted at ``/ui`` (vanilla HTML/JS).
 
@@ -47,6 +48,7 @@ from core.qa_chain import QAChain, QAResult
 from core.source_inventory import (
     build_source_export,
     build_source_inventory,
+    delete_source_vectors,
     source_export_attachment_filename,
 )
 from core.ticket_chain import (
@@ -252,6 +254,14 @@ class SourcesInventoryResponse(BaseModel):
     truncated: bool = False
 
 
+class SourceDeleteResponse(BaseModel):
+    """Response for ``DELETE /sources`` — vectors removed from Pinecone."""
+
+    deleted: int
+    source_type: str
+    file_name: str
+
+
 # ----- Chain accessors (lazy singletons) ------------------------------------
 
 
@@ -376,6 +386,46 @@ async def export_merged_source(
         headers={
             "Content-Disposition": f'attachment; filename="{attach_name}"',
         },
+    )
+
+
+@app.delete("/sources", response_model=SourceDeleteResponse)
+async def delete_merged_source(
+    source_type: str = Query(..., min_length=1, max_length=128),
+    file_name: str = Query(..., min_length=1, max_length=2048),
+) -> SourceDeleteResponse:
+    """Remove every vector chunk for one logical source from Pinecone.
+
+    Matches ``source_type`` and exact ``file_name`` metadata (same as export).
+    Scans the full index; large indexes may take time.
+    """
+    fn = file_name.strip()
+    if ".." in fn or "\x00" in fn:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file_name.",
+        )
+    try:
+        deleted = delete_source_vectors(source_type.strip(), fn)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    except Exception as exc:
+        logger.exception("Source delete failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Could not delete source: {exc}",
+        ) from exc
+    if deleted == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No chunks found for this source_type and file_name.",
+        )
+    return SourceDeleteResponse(
+        deleted=deleted,
+        source_type=source_type.strip(),
+        file_name=fn,
     )
 
 
