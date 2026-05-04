@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nyck AI — Internal RAG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      /* Tokens pulled from the Figma developer hand-off (Chat, node 361:14644) */
+      --page-bg: #f7f7f7;
+      --card-bg: #ffffff;
+      --border: #e5e5e5;
+      --border-soft: #efefef;
+
+      --text-heading: #414141;
+      --text-body: #2c2c2c;
+      --text-nav: #37393d;
+      --text-muted: #616873;
+      --text-soft: #7a7a82;
+      --text-brand: #675b5b;
+
+      --accent: #0e6df9;
+      --accent-soft-bg: #e9f1ff;
+      --pill-border: #3700fe;
+      --profile-bg: #f0f0f0;
+
+      --success: #16a34a;
+      --danger: #dc2626;
+
+      --radius-card: 12px;
+      --radius-input: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --radius-pill: 60px;
+
+      /* The "I'm Nyck" gradient from the Figma hand-off */
+      --gradient-text: linear-gradient(
+        173.33deg,
+        rgb(55, 0, 254) 31.25%,
+        rgba(255, 117, 193, 0.7) 42.16%,
+        rgb(14, 109, 249) 99.46%
+      );
+      /* Send button / accent gradient */
+      --gradient-button: linear-gradient(
+        135deg,
+        rgb(14, 109, 249) 0%,
+        rgb(180, 89, 208) 60%,
+        rgb(255, 117, 193) 100%
+      );
+
+      --thread-max-width: 64rem;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--page-bg);
+      color: var(--text-body);
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system,
+                   BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+                   Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    button { font-family: inherit; }
+
+    /* ---------- Layout ---------- */
+    .layout {
+      display: grid;
+      grid-template-columns: 221px 1fr;
+      height: 100vh;
+    }
+
+    /* ---------- Sidebar ---------- */
+    .sidebar {
+      background: var(--page-bg);
+      padding: 26px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 4px 14px;
+    }
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+      box-shadow: 0 1px 2px rgba(14, 109, 249, 0.3);
+      flex-shrink: 0;
+    }
+    .brand-name {
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text-brand);
+      letter-spacing: -0.005em;
+    }
+
+    .nav-section-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      padding: 14px 4px 4px;
+      letter-spacing: 0;
+    }
+    .nav-btn {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      padding: 12px 8px;
+      font-size: 15px;
+      color: var(--text-nav);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      font-weight: 500;
+      transition: background 100ms ease, color 100ms ease;
+    }
+    .nav-btn:hover { background: rgba(0, 0, 0, 0.04); }
+    .nav-btn.active {
+      background: var(--accent-soft-bg);
+      color: var(--accent);
+    }
+    .nav-btn .nav-icon {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.7;
+      flex-shrink: 0;
+    }
+
+    .sidebar-spacer { flex: 1; }
+
+    .health-card {
+      margin-top: 8px;
+      padding: 12px 14px;
+      background: var(--profile-bg);
+      border-radius: var(--radius-card);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .health-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #cfcfcf;
+      flex-shrink: 0;
+    }
+    .health-dot.ok  { background: var(--success); box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15); }
+    .health-dot.bad { background: var(--danger); box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15); }
+    .health-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.25;
+    }
+    .health-title {
+      font-weight: 500;
+      color: var(--text-nav);
+      font-size: 14px;
+    }
+    .health-sub {
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+
+    /* ---------- Main panel (white card on gray page) ---------- */
+    .main-wrap {
+      padding: 16px 16px 16px 0;
+    }
+    .main {
+      background: var(--card-bg);
+      border-radius: var(--radius-card);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .thread {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 24px 0;
+    }
+    .thread-inner {
+      width: 100%;
+      max-width: var(--thread-max-width);
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      padding-bottom: 12px;
+    }
+
+    /* ---------- Empty state ("Hi there, I'm Nyck") ---------- */
+    .welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      flex: 1;
+      gap: 8px;
+      padding: 60px 12px 24px;
+    }
+    .welcome h1 {
+      font-size: 44px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--text-heading);
+      line-height: 1.05;
+    }
+    .welcome h1 .gradient {
+      background: var(--gradient-text);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-weight: 700;
+    }
+    .welcome p {
+      font-size: 16px;
+      color: #000;
+      margin: 6px 0 0 0;
+      max-width: 560px;
+    }
+
+    /* Suggestion pills (purple-bordered, rounded full) */
+    .suggestion-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      padding: 8px 0 16px;
+    }
+    .suggestion {
+      background: transparent;
+      border: 1px solid var(--pill-border);
+      color: var(--text-body);
+      font-size: 15px;
+      font-weight: 500;
+      padding: 10px 14px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: background 100ms ease, color 100ms ease;
+      line-height: 1.2;
+    }
+    .suggestion:hover {
+      background: var(--accent-soft-bg);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* ---------- Chat messages ---------- */
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      animation: fadeUp 200ms ease both;
+    }
+    .msg.user { align-items: flex-end; }
+    .msg.assistant { align-items: flex-start; }
+    .bubble {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    .bubble.user {
+      background: var(--accent-soft-bg);
+      color: var(--text-body);
+      border-top-right-radius: 4px;
+    }
+    .bubble.assistant {
+      background: transparent;
+      color: var(--text-body);
+      padding: 0 2px;
+      max-width: 100%;
+    }
+    .bubble.error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+    .typing {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px 0 0 2px;
+    }
+    .typing span {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #b5b9c0;
+      animation: typingDot 1.2s infinite ease-in-out;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.15s; }
+    .typing span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes typingDot {
+      0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+      30% { opacity: 1; transform: translateY(-2px); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .source-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fafafa;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    .chip .type {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+    .chip .score { font-variant-numeric: tabular-nums; color: var(--text-muted); }
+
+    /* ---------- Composer (matches Figma: white, rounded 16, border, 139ish tall) ---------- */
+    .composer-wrap {
+      padding: 0 24px 24px;
+      display: flex;
+      justify-content: center;
+      background: var(--card-bg);
+    }
+    .composer {
+      width: 100%;
+      max-width: var(--thread-max-width);
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      padding: 16px 20px 14px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100px;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .composer:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(14, 109, 249, 0.12);
+    }
+    .composer textarea {
+      width: 100%;
+      min-height: 24px;
+      max-height: 240px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text-body);
+      font-family: inherit;
+      font-size: 16px;
+      line-height: 1.45;
+      padding: 0;
+    }
+    .composer textarea::placeholder { color: #000; opacity: 0.95; }
+    .composer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: auto;
+      padding-top: 16px;
+    }
+    .composer-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 12px;
+      color: var(--text-soft);
+      flex-wrap: wrap;
+    }
+    .icon-btn {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--text-nav);
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 100ms ease;
+    }
+    .icon-btn:hover { background: rgba(0, 0, 0, 0.05); }
+    .icon-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+
+    .checkbox {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+      color: var(--text-nav);
+      font-size: 13px;
+    }
+    .checkbox input { accent-color: var(--accent); }
+
+    .send-btn {
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+      background: var(--gradient-button);
+      color: #fff;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 80ms ease, opacity 80ms ease, filter 100ms ease;
+      box-shadow: 0 4px 14px rgba(180, 89, 208, 0.35);
+    }
+    .send-btn:hover:not(:disabled) { transform: scale(1.04); filter: brightness(1.04); }
+    .send-btn:active:not(:disabled) { transform: scale(0.96); }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+    .send-btn svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2.2; }
+
+    .status-msg { font-size: 12px; color: var(--text-soft); }
+    .status-msg.error { color: var(--danger); }
+    .status-msg.success { color: var(--success); }
+
+    /* ---------- Ticket card (light theme) ---------- */
+    .ticket-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 22px 24px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      animation: fadeUp 200ms ease both;
+    }
+    .ticket-title {
+      font-size: 19px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0 0 10px 0;
+      color: var(--text-heading);
+    }
+    .ticket-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .meta-pill {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #fafafa;
+      border: 1px solid var(--border);
+      color: var(--text-nav);
+    }
+    .meta-pill.priority-urgent { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .meta-pill.priority-high   { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+    .meta-pill.priority-medium { background: #fefce8; border-color: #fde68a; color: #854d0e; }
+    .meta-pill.priority-low    { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+    .ticket-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin: 16px 0 6px;
+    }
+    .ticket-section-title:first-of-type { margin-top: 0; }
+    .ticket-section { color: var(--text-body); white-space: pre-wrap; font-size: 14px; }
+    .ticket-section ul { margin: 0; padding-left: 20px; }
+    .ticket-section li { margin: 4px 0; }
+    .tags-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tag {
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: #f4f4f5;
+      color: var(--text-nav);
+      border: 1px solid var(--border);
+    }
+    .ticket-actions {
+      margin-top: 20px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    button.action {
+      appearance: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      transition: background 100ms ease, border-color 100ms ease, opacity 100ms ease, filter 100ms ease;
+    }
+    button.action.secondary {
+      background: #fff;
+      border: 1px solid var(--border);
+      color: var(--text-body);
+    }
+    button.action.secondary:hover:not(:disabled) { background: #fafafa; }
+    button.action.primary {
+      background: var(--gradient-button);
+      border: 0;
+      color: #fff;
+    }
+    button.action.primary:hover:not(:disabled) { filter: brightness(1.05); }
+    button.action:disabled { opacity: 0.5; cursor: not-allowed; }
+    .notion-link {
+      font-size: 13px;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .notion-link:hover { text-decoration: underline; }
+
+    /* ---------- Ingest tab ---------- */
+    .ingest-scroll {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+      padding: 28px 24px 32px;
+    }
+    .ingest-inner {
+      width: 100%;
+      max-width: var(--thread-max-width);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .ingest-header h1 {
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0 0 6px;
+      color: var(--text-heading);
+    }
+    .ingest-header p {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: 14px;
+      max-width: 640px;
+    }
+    .ingest-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 18px 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .ingest-card-head {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .ingest-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--accent-soft-bg);
+      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .ingest-icon svg {
+      width: 18px; height: 18px;
+      stroke: currentColor; fill: none; stroke-width: 1.7;
+    }
+    .ingest-meta h2 {
+      margin: 0 0 2px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-heading);
+    }
+    .ingest-meta p {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: 13px;
+    }
+    .ingest-meta code {
+      background: #f4f4f5;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .ingest-meta a { color: var(--accent); text-decoration: none; }
+    .ingest-meta a:hover { text-decoration: underline; }
+
+    .dropzone {
+      display: block;
+      border: 1.5px dashed var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      background: #fafafa;
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+    .dropzone:hover, .dropzone.drag {
+      border-color: var(--accent);
+      background: var(--accent-soft-bg);
+    }
+    .dropzone-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .dropzone-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-body);
+    }
+    .dropzone-sub {
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+
+    .ingest-filelist {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ingest-filelist:empty { display: none; }
+    .ingest-filelist .file-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      background: #fafafa;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .ingest-filelist .file-row .file-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+      color: var(--text-body);
+    }
+    .ingest-filelist .file-row .file-size {
+      color: var(--text-soft);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+    }
+    .ingest-filelist .file-row .file-remove {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      color: var(--text-soft);
+      font-size: 16px;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .ingest-filelist .file-row .file-remove:hover {
+      background: rgba(0,0,0,0.05);
+      color: var(--danger);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 700px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .field-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .field textarea {
+      width: 100%;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 13px;
+      background: #fff;
+      color: var(--text-body);
+      outline: 0;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .field textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(14, 109, 249, 0.12);
+    }
+    .field-help {
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+
+    .ingest-card-foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .ingest-result {
+      font-size: 13px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #f6fdf9;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+    }
+    .ingest-result.error {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #991b1b;
+    }
+    .ingest-result ul {
+      margin: 4px 0 0;
+      padding-left: 18px;
+    }
+    .ingest-result li { margin: 2px 0; }
+
+    .hidden { display: none !important; }
+
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 8px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.16); }
+
+    @media (max-width: 760px) {
+      .layout { grid-template-columns: 1fr; height: auto; }
+      .sidebar {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        background: var(--page-bg);
+      }
+      .nav-section-label { display: none; }
+      .nav-btn { padding: 6px 10px; font-size: 13px; width: auto; }
+      .sidebar-spacer { flex: 0; }
+      .health-card { margin: 0 0 0 auto; padding: 6px 10px; }
+      .health-sub { display: none; }
+      .main-wrap { padding: 12px; }
+      .welcome h1 { font-size: 30px; }
+      .suggestion { font-size: 13px; padding: 8px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">N</div>
+        <div class="brand-name">Nyck AI</div>
+      </div>
+
+      <div class="nav-section-label">Chat</div>
+      <button class="nav-btn active" data-tab="qa" type="button">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 12a8 8 0 1 1-3.5-6.6L21 4v6h-6" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        Q&amp;A Assistant
+      </button>
+      <button class="nav-btn" data-tab="ticket" type="button">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 11h6M9 15h4M5 4h14a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2z" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        Generate Ticket
+      </button>
+
+      <div class="nav-section-label">Knowledge</div>
+      <button class="nav-btn" data-tab="ingest" type="button">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v14M5 12l7 7 7-7" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        Ingest Sources
+      </button>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="health-card">
+        <span id="health-dot" class="health-dot"></span>
+        <div class="health-text">
+          <span class="health-title" id="health-title">checking…</span>
+          <span class="health-sub" id="health-sub">/health</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <main class="main">
+        <!-- Q&A tab -->
+        <section id="tab-qa" class="tab" style="display: contents;">
+          <div class="thread" id="qa-thread">
+            <div class="thread-inner" id="qa-thread-inner">
+              <div class="welcome" id="qa-welcome">
+                <h1><span style="color: var(--text-heading);">Hi there,</span> <span class="gradient">I'm Nyck</span></h1>
+                <p>How can I help with your knowledge base today?</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="suggestion-row" id="qa-suggestions">
+            <button class="suggestion" data-prompt="What's our refund policy for enterprise customers?">What's our refund policy?</button>
+            <button class="suggestion" data-prompt="Summarize the most recent Acme call.">Recent Acme call</button>
+            <button class="suggestion" data-prompt="Who owns onboarding for new design partners?">Onboarding owner</button>
+            <button class="suggestion" data-prompt="What features did customers ask for last month?">Recent feature requests</button>
+          </div>
+
+          <div class="composer-wrap">
+            <form class="composer" id="qa-form" autocomplete="off">
+              <textarea id="qa-input" rows="1" placeholder="Send a message"></textarea>
+              <div class="composer-row">
+                <div class="composer-meta">
+                  <span id="qa-status" class="status-msg"></span>
+                </div>
+                <button id="qa-submit" class="send-btn" type="submit" aria-label="Send">
+                  <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- Ticket tab -->
+        <section id="tab-ticket" class="tab hidden" style="display: none;">
+          <div class="thread" id="ticket-thread">
+            <div class="thread-inner" id="ticket-thread-inner">
+              <div class="welcome" id="ticket-welcome">
+                <h1><span style="color: var(--text-heading);">Hi there,</span> <span class="gradient">let's draft a ticket</span></h1>
+                <p>Describe a feature, bug, or research item — Nyck will structure it using related context from your knowledge base.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="suggestion-row" id="ticket-suggestions">
+            <button class="suggestion" data-prompt="Customers on Safari are getting kicked out after switching wifi. Should auto-reauthenticate without losing draft state.">Safari logout bug</button>
+            <button class="suggestion" data-prompt="Add a CSV export to the customer dashboard so account managers can share data.">CSV export feature</button>
+            <button class="suggestion" data-prompt="Investigate why our trial-to-paid conversion dropped this quarter.">Conversion research</button>
+            <button class="suggestion" data-prompt="Improve performance of the activity feed; it lags after 200+ events.">Activity feed perf</button>
+          </div>
+
+          <div class="composer-wrap">
+            <form class="composer" id="ticket-form" autocomplete="off">
+              <textarea id="ticket-input" rows="1" placeholder="Send a message"></textarea>
+              <div class="composer-row">
+                <div class="composer-meta">
+                  <label class="checkbox">
+                    <input id="ticket-push" type="checkbox" />
+                    Push directly to Notion
+                  </label>
+                  <span id="ticket-status" class="status-msg"></span>
+                </div>
+                <button id="ticket-submit" class="send-btn" type="submit" aria-label="Generate">
+                  <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- Ingest tab -->
+        <section id="tab-ingest" class="tab hidden" style="display: none;">
+          <div class="ingest-scroll">
+            <div class="ingest-inner">
+              <header class="ingest-header">
+                <h1>Ingest Sources</h1>
+                <p>Add documents, Notion pages, sales call transcripts, and Discord exports to the company knowledge base. Each upload is chunked, embedded, and written to Pinecone.</p>
+              </header>
+
+              <!-- Local files -->
+              <article class="ingest-card" data-card="local">
+                <div class="ingest-card-head">
+                  <div class="ingest-icon">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <div class="ingest-meta">
+                    <h2>Documents</h2>
+                    <p>PDF, DOCX, TXT, or Markdown. Up to 50 files per upload.</p>
+                  </div>
+                </div>
+
+                <label class="dropzone" data-dropzone="local">
+                  <input id="local-files" type="file" multiple accept=".pdf,.docx,.txt,.md" hidden />
+                  <div class="dropzone-inner">
+                    <span class="dropzone-title">Drop files or click to browse</span>
+                    <span class="dropzone-sub">.pdf, .docx, .txt, .md · max 50 MB each</span>
+                  </div>
+                </label>
+                <div class="ingest-filelist" id="local-filelist"></div>
+
+                <div class="ingest-card-foot">
+                  <span id="local-status" class="status-msg"></span>
+                  <button id="local-submit" class="action primary" type="button" disabled>Ingest documents</button>
+                </div>
+              </article>
+
+              <!-- Transcripts -->
+              <article class="ingest-card" data-card="transcripts">
+                <div class="ingest-card-head">
+                  <div class="ingest-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 1v11m0 0a4 4 0 0 1-4-4V5a4 4 0 0 1 8 0v3a4 4 0 0 1-4 4z M19 10a7 7 0 0 1-14 0 M12 19v4 M8 23h8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <div class="ingest-meta">
+                    <h2>Sales Call Transcripts</h2>
+                    <p>Plain <code>.txt</code> files. Filenames like <code>2024-05-14_acme.txt</code> get a date tag.</p>
+                  </div>
+                </div>
+
+                <label class="dropzone" data-dropzone="transcripts">
+                  <input id="transcripts-files" type="file" multiple accept=".txt" hidden />
+                  <div class="dropzone-inner">
+                    <span class="dropzone-title">Drop transcripts or click to browse</span>
+                    <span class="dropzone-sub">.txt only</span>
+                  </div>
+                </label>
+                <div class="ingest-filelist" id="transcripts-filelist"></div>
+
+                <div class="ingest-card-foot">
+                  <span id="transcripts-status" class="status-msg"></span>
+                  <button id="transcripts-submit" class="action primary" type="button" disabled>Ingest transcripts</button>
+                </div>
+              </article>
+
+              <!-- Discord -->
+              <article class="ingest-card" data-card="discord">
+                <div class="ingest-card-head">
+                  <div class="ingest-icon">
+                    <svg viewBox="0 0 24 24"><path d="M9 8h.01M15 8h.01 M5 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3l-3 3-3-3H7a2 2 0 0 1-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <div class="ingest-meta">
+                    <h2>Discord Exports</h2>
+                    <p>JSON files from <a href="https://github.com/Tyrrrz/DiscordChatExporter" target="_blank" rel="noopener">DiscordChatExporter</a>.</p>
+                  </div>
+                </div>
+
+                <label class="dropzone" data-dropzone="discord">
+                  <input id="discord-files" type="file" multiple accept=".json,application/json" hidden />
+                  <div class="dropzone-inner">
+                    <span class="dropzone-title">Drop exports or click to browse</span>
+                    <span class="dropzone-sub">.json only</span>
+                  </div>
+                </label>
+                <div class="ingest-filelist" id="discord-filelist"></div>
+
+                <div class="ingest-card-foot">
+                  <span id="discord-status" class="status-msg"></span>
+                  <button id="discord-submit" class="action primary" type="button" disabled>Ingest exports</button>
+                </div>
+              </article>
+
+              <!-- Notion -->
+              <article class="ingest-card" data-card="notion">
+                <div class="ingest-card-head">
+                  <div class="ingest-icon">
+                    <svg viewBox="0 0 24 24"><path d="M3 5l3-2h13a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6 M7 5v14 M11 9v8l5-8v8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <div class="ingest-meta">
+                    <h2>Notion Pages &amp; Databases</h2>
+                    <p>Make sure each page or database is connected to your <code>NOTION_TOKEN</code> integration.</p>
+                  </div>
+                </div>
+
+                <div class="form-grid">
+                  <label class="field">
+                    <span class="field-label">Page IDs</span>
+                    <textarea id="notion-pages" rows="3" placeholder="One page ID or URL per line"></textarea>
+                    <span class="field-help">UUIDs or full Notion URLs accepted.</span>
+                  </label>
+                  <label class="field">
+                    <span class="field-label">Database IDs</span>
+                    <textarea id="notion-dbs" rows="3" placeholder="One database ID or URL per line"></textarea>
+                    <span class="field-help">All pages in each database will be ingested.</span>
+                  </label>
+                </div>
+
+                <div class="ingest-card-foot">
+                  <span id="notion-status" class="status-msg"></span>
+                  <button id="notion-submit" class="action primary" type="button">Ingest from Notion</button>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const API_URL = (window.API_URL || "http://localhost:8000").replace(/\/+$/, "");
+
+      // ---------- Tabs ----------
+      const tabs = {
+        qa: document.getElementById("tab-qa"),
+        ticket: document.getElementById("tab-ticket"),
+        ingest: document.getElementById("tab-ingest"),
+      };
+      function showTab(name) {
+        Object.keys(tabs).forEach(function (k) {
+          const active = k === name;
+          tabs[k].classList.toggle("hidden", !active);
+          tabs[k].style.display = active ? "contents" : "none";
+        });
+        document.querySelectorAll(".nav-btn").forEach(function (b) {
+          b.classList.toggle("active", b.getAttribute("data-tab") === name);
+        });
+      }
+      document.querySelectorAll(".nav-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          showTab(btn.getAttribute("data-tab"));
+        });
+      });
+
+      // ---------- Health check ----------
+      const healthDot = document.getElementById("health-dot");
+      const healthTitle = document.getElementById("health-title");
+      const healthSub = document.getElementById("health-sub");
+      fetch(API_URL + "/health")
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function () {
+          healthDot.classList.add("ok");
+          healthTitle.textContent = "API online";
+          healthSub.textContent = API_URL.replace(/^https?:\/\//, "");
+        })
+        .catch(function () {
+          healthDot.classList.add("bad");
+          healthTitle.textContent = "API unreachable";
+          healthSub.textContent = API_URL.replace(/^https?:\/\//, "");
+        });
+
+      // ---------- Helpers ----------
+      function escapeHtml(s) {
+        return String(s == null ? "" : s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+      function setStatus(el, message, kind) {
+        el.classList.remove("error", "success");
+        if (kind && kind !== "loading") el.classList.add(kind);
+        el.textContent = message || "";
+      }
+      function chipForSource(s) {
+        const type = escapeHtml(s.source_type || "unknown");
+        const name = escapeHtml(s.file_name || "unknown");
+        const date = s.date ? " · " + escapeHtml(s.date) : "";
+        const score = (typeof s.score === "number" && !isNaN(s.score))
+          ? ' · <span class="score">' + s.score.toFixed(3) + '</span>'
+          : "";
+        return (
+          '<span class="chip" title="' + escapeHtml(s.preview || "") + '">' +
+          '<span class="type">' + type + '</span>' +
+          name + date + score +
+          '</span>'
+        );
+      }
+      async function postJSON(path, body) {
+        const resp = await fetch(API_URL + path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const text = await resp.text();
+        let data;
+        try { data = text ? JSON.parse(text) : {}; } catch (_e) { data = { detail: text }; }
+        if (!resp.ok) {
+          const detail = (data && data.detail) ? data.detail : ("HTTP " + resp.status);
+          const msg = typeof detail === "string" ? detail : JSON.stringify(detail);
+          throw new Error(msg);
+        }
+        return data;
+      }
+      function autosize(textarea) {
+        textarea.style.height = "auto";
+        textarea.style.height = Math.min(textarea.scrollHeight, 240) + "px";
+      }
+      function dismissChrome(welcomeEl, suggestionsEl) {
+        if (welcomeEl && welcomeEl.parentNode) welcomeEl.parentNode.removeChild(welcomeEl);
+        if (suggestionsEl) suggestionsEl.classList.add("hidden");
+      }
+      function scrollThreadToBottom(threadEl) {
+        requestAnimationFrame(function () { threadEl.scrollTop = threadEl.scrollHeight; });
+      }
+
+      // ---------- Q&A tab ----------
+      const qaForm = document.getElementById("qa-form");
+      const qaInput = document.getElementById("qa-input");
+      const qaSubmit = document.getElementById("qa-submit");
+      const qaStatus = document.getElementById("qa-status");
+      const qaThread = document.getElementById("qa-thread");
+      const qaThreadInner = document.getElementById("qa-thread-inner");
+      const qaWelcome = document.getElementById("qa-welcome");
+      const qaSuggestions = document.getElementById("qa-suggestions");
+
+      qaInput.addEventListener("input", function () { autosize(qaInput); });
+      qaInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          qaForm.requestSubmit();
+        }
+      });
+      document.querySelectorAll("#qa-suggestions .suggestion").forEach(function (el) {
+        el.addEventListener("click", function () {
+          qaInput.value = el.getAttribute("data-prompt") || el.textContent;
+          autosize(qaInput);
+          qaInput.focus();
+        });
+      });
+
+      qaForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const question = qaInput.value.trim();
+        if (!question) {
+          setStatus(qaStatus, "Type a question first.", "error");
+          return;
+        }
+        dismissChrome(qaWelcome, qaSuggestions);
+
+        const userBubble = document.createElement("div");
+        userBubble.className = "msg user";
+        userBubble.innerHTML = '<div class="bubble user">' + escapeHtml(question) + '</div>';
+        qaThreadInner.appendChild(userBubble);
+
+        const pending = document.createElement("div");
+        pending.className = "msg assistant";
+        pending.innerHTML =
+          '<div class="bubble assistant"><span class="typing"><span></span><span></span><span></span></span></div>';
+        qaThreadInner.appendChild(pending);
+        scrollThreadToBottom(qaThread);
+
+        qaInput.value = "";
+        autosize(qaInput);
+        qaSubmit.disabled = true;
+        setStatus(qaStatus, "");
+
+        try {
+          const data = await postJSON("/qa", { question: question });
+          const sources = Array.isArray(data.sources) ? data.sources : [];
+          const chips = sources.map(chipForSource).join("");
+          pending.innerHTML =
+            '<div class="bubble assistant">' + escapeHtml(data.answer || "") + '</div>' +
+            (chips ? '<div class="source-chips">' + chips + '</div>' : "");
+        } catch (err) {
+          pending.innerHTML =
+            '<div class="bubble error">Error: ' + escapeHtml(err.message) + '</div>';
+        } finally {
+          qaSubmit.disabled = false;
+          scrollThreadToBottom(qaThread);
+          qaInput.focus();
+        }
+      });
+
+      // ---------- Ticket tab ----------
+      const ticketForm = document.getElementById("ticket-form");
+      const ticketInput = document.getElementById("ticket-input");
+      const ticketSubmit = document.getElementById("ticket-submit");
+      const ticketPush = document.getElementById("ticket-push");
+      const ticketStatus = document.getElementById("ticket-status");
+      const ticketThread = document.getElementById("ticket-thread");
+      const ticketThreadInner = document.getElementById("ticket-thread-inner");
+      const ticketWelcome = document.getElementById("ticket-welcome");
+      const ticketSuggestions = document.getElementById("ticket-suggestions");
+
+      let lastTicket = null;
+
+      ticketInput.addEventListener("input", function () { autosize(ticketInput); });
+      ticketInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          ticketForm.requestSubmit();
+        }
+      });
+      document.querySelectorAll("#ticket-suggestions .suggestion").forEach(function (el) {
+        el.addEventListener("click", function () {
+          ticketInput.value = el.getAttribute("data-prompt") || el.textContent;
+          autosize(ticketInput);
+          ticketInput.focus();
+        });
+      });
+
+      ticketForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const description = ticketInput.value.trim();
+        if (!description) {
+          setStatus(ticketStatus, "Describe the ticket first.", "error");
+          return;
+        }
+        dismissChrome(ticketWelcome, ticketSuggestions);
+
+        const userBubble = document.createElement("div");
+        userBubble.className = "msg user";
+        userBubble.innerHTML = '<div class="bubble user">' + escapeHtml(description) + '</div>';
+        ticketThreadInner.appendChild(userBubble);
+
+        const pending = document.createElement("div");
+        pending.className = "msg assistant";
+        pending.innerHTML =
+          '<div class="bubble assistant"><span class="typing"><span></span><span></span><span></span></span></div>';
+        ticketThreadInner.appendChild(pending);
+        scrollThreadToBottom(ticketThread);
+
+        ticketSubmit.disabled = true;
+        setStatus(ticketStatus, ticketPush.checked ? "Generating + pushing…" : "Generating…", "loading");
+        ticketInput.value = "";
+        autosize(ticketInput);
+
+        try {
+          const data = await postJSON("/ticket", {
+            description: description,
+            push_to_notion: ticketPush.checked,
+          });
+          lastTicket = data;
+          renderTicketCard(pending, data);
+          setStatus(
+            ticketStatus,
+            data.notion_url ? "Pushed to Notion." : "",
+            data.notion_url ? "success" : ""
+          );
+        } catch (err) {
+          pending.innerHTML =
+            '<div class="bubble error">Error: ' + escapeHtml(err.message) + '</div>';
+          setStatus(ticketStatus, "");
+        } finally {
+          ticketSubmit.disabled = false;
+          scrollThreadToBottom(ticketThread);
+          ticketInput.focus();
+        }
+      });
+
+      function renderTicketCard(container, data) {
+        const t = data.ticket || {};
+        const sources = Array.isArray(data.sources) ? data.sources : [];
+        const tags = Array.isArray(t.tags) ? t.tags : [];
+        const ac = Array.isArray(t.acceptance_criteria) ? t.acceptance_criteria : [];
+
+        const chipsHtml = sources.map(chipForSource).join("");
+        const tagsHtml = tags.length
+          ? tags.map(function (tg) { return '<span class="tag">' + escapeHtml(tg) + '</span>'; }).join("")
+          : '<span class="tag">none</span>';
+        const acHtml = ac.length
+          ? '<ul>' + ac.map(function (item) { return '<li>' + escapeHtml(item) + '</li>'; }).join("") + '</ul>'
+          : '<em>(none)</em>';
+
+        const priorityClass = "priority-" + escapeHtml((t.priority || "").toLowerCase());
+        const sprintPill = t.current_sprint
+          ? '<span class="meta-pill">Sprint: ' + escapeHtml(t.current_sprint) + "</span>"
+          : "";
+        const ownerPill = t.dev_owner
+          ? '<span class="meta-pill">Owner: ' + escapeHtml(t.dev_owner) + "</span>"
+          : "";
+
+        container.innerHTML =
+          '<div class="ticket-card">' +
+            '<div class="ticket-title">' + escapeHtml(t.title || "Untitled") + '</div>' +
+            '<div class="ticket-meta">' +
+              '<span class="meta-pill">Type: ' + escapeHtml(t.type || "") + '</span>' +
+              '<span class="meta-pill ' + priorityClass + '">Priority: ' + escapeHtml(t.priority || "") + '</span>' +
+              '<span class="meta-pill">Status: ' + escapeHtml(t.status || "") + '</span>' +
+              '<span class="meta-pill">Effort: ' + escapeHtml(t.estimated_effort || "") + '</span>' +
+              sprintPill +
+              ownerPill +
+            '</div>' +
+            '<div class="ticket-section-title">Description</div>' +
+            '<div class="ticket-section">' + escapeHtml(t.description || "") + '</div>' +
+            '<div class="ticket-section-title">Acceptance criteria</div>' +
+            '<div class="ticket-section">' + acHtml + '</div>' +
+            '<div class="ticket-section-title">Related context</div>' +
+            '<div class="ticket-section">' + escapeHtml(t.related_context || "") + '</div>' +
+            '<div class="ticket-section-title">Tags</div>' +
+            '<div class="tags-row">' + tagsHtml + '</div>' +
+            (chipsHtml
+              ? '<div class="ticket-section-title">Sources used</div>' +
+                '<div class="source-chips">' + chipsHtml + '</div>'
+              : '') +
+            '<div class="ticket-actions">' +
+              '<button class="action secondary" data-role="copy" type="button">Copy as Markdown</button>' +
+              (data.notion_url
+                ? '<a class="notion-link" href="' + escapeHtml(data.notion_url) + '" target="_blank" rel="noopener">Open in Notion ↗</a>'
+                : '<button class="action primary" data-role="push" type="button">Push to Notion</button>') +
+            '</div>' +
+          '</div>';
+
+        const copyBtn = container.querySelector('[data-role="copy"]');
+        if (copyBtn) {
+          copyBtn.addEventListener("click", async function () {
+            const md = (lastTicket && lastTicket.markdown) || "";
+            try {
+              await navigator.clipboard.writeText(md);
+              setStatus(ticketStatus, "Markdown copied to clipboard.", "success");
+            } catch (_err) {
+              const ta = document.createElement("textarea");
+              ta.value = md;
+              document.body.appendChild(ta);
+              ta.select();
+              try { document.execCommand("copy"); } catch (_e) {}
+              ta.remove();
+              setStatus(ticketStatus, "Markdown copied to clipboard.", "success");
+            }
+          });
+        }
+        const pushBtn = container.querySelector('[data-role="push"]');
+        if (pushBtn) {
+          pushBtn.addEventListener("click", async function () {
+            if (!lastTicket || !lastTicket.ticket) return;
+            pushBtn.disabled = true;
+            setStatus(ticketStatus, "Pushing to Notion…", "loading");
+            try {
+              const data = await postJSON("/ticket/push", { ticket: lastTicket.ticket });
+              lastTicket.notion_url = data.notion_url;
+              renderTicketCard(container, lastTicket);
+              setStatus(ticketStatus, "Pushed to Notion.", "success");
+            } catch (err) {
+              setStatus(ticketStatus, "Error: " + err.message, "error");
+              pushBtn.disabled = false;
+            }
+          });
+        }
+      }
+
+      // ---------- Ingest tab ----------
+      function formatBytes(n) {
+        if (n < 1024) return n + " B";
+        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+        return (n / 1024 / 1024).toFixed(1) + " MB";
+      }
+
+      // Notion ID extractor: accepts raw UUIDs, dashed UUIDs, or Notion URLs.
+      function parseNotionIds(raw) {
+        if (!raw) return [];
+        const ids = [];
+        const seen = new Set();
+        raw.split(/[\s,]+/).forEach(function (token) {
+          token = token.trim();
+          if (!token) return;
+          // Pull last 32 hex chars from URLs like notion.so/Some-Page-abc123…
+          const hexMatch = token.match(/([0-9a-fA-F]{32})/) || token.match(/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/);
+          let id = hexMatch ? hexMatch[1].replace(/-/g, "") : "";
+          if (id.length === 32) {
+            const dashed = id.slice(0,8) + "-" + id.slice(8,12) + "-" + id.slice(12,16) + "-" + id.slice(16,20) + "-" + id.slice(20);
+            if (!seen.has(dashed)) {
+              seen.add(dashed);
+              ids.push(dashed);
+            }
+          }
+        });
+        return ids;
+      }
+
+      function setupFilePicker(kind, accepts) {
+        const input = document.getElementById(kind + "-files");
+        const list = document.getElementById(kind + "-filelist");
+        const status = document.getElementById(kind + "-status");
+        const submit = document.getElementById(kind + "-submit");
+        const dropzone = document.querySelector('[data-dropzone="' + kind + '"]');
+
+        let files = [];
+
+        function render() {
+          list.innerHTML = files.map(function (f, i) {
+            return (
+              '<div class="file-row">' +
+                '<span class="file-name">' + escapeHtml(f.name) + '</span>' +
+                '<span class="file-size">' + formatBytes(f.size) + '</span>' +
+                '<button class="file-remove" data-i="' + i + '" type="button" aria-label="Remove">×</button>' +
+              '</div>'
+            );
+          }).join("");
+          submit.disabled = files.length === 0;
+        }
+
+        function isAcceptable(file) {
+          const ext = (file.name.match(/\.[^.]+$/) || [""])[0].toLowerCase();
+          return accepts.indexOf(ext) !== -1;
+        }
+
+        function addFiles(incoming) {
+          const skipped = [];
+          for (let i = 0; i < incoming.length; i++) {
+            const f = incoming[i];
+            if (!isAcceptable(f)) {
+              skipped.push(f.name);
+              continue;
+            }
+            files.push(f);
+          }
+          render();
+          if (skipped.length) {
+            setStatus(status, "Skipped (wrong type): " + skipped.join(", "), "error");
+          } else {
+            setStatus(status, "");
+          }
+        }
+
+        input.addEventListener("change", function () {
+          if (input.files && input.files.length) addFiles(input.files);
+          input.value = "";
+        });
+
+        list.addEventListener("click", function (e) {
+          const btn = e.target.closest(".file-remove");
+          if (!btn) return;
+          const i = Number(btn.getAttribute("data-i"));
+          if (!isNaN(i)) {
+            files.splice(i, 1);
+            render();
+          }
+        });
+
+        ["dragenter", "dragover"].forEach(function (ev) {
+          dropzone.addEventListener(ev, function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add("drag");
+          });
+        });
+        ["dragleave", "drop"].forEach(function (ev) {
+          dropzone.addEventListener(ev, function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove("drag");
+          });
+        });
+        dropzone.addEventListener("drop", function (e) {
+          if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+        });
+
+        return {
+          getFiles: function () { return files; },
+          reset: function () { files = []; render(); },
+          status: status,
+          submit: submit,
+        };
+      }
+
+      async function postUpload(path, formData) {
+        const resp = await fetch(API_URL + path, { method: "POST", body: formData });
+        const text = await resp.text();
+        let data;
+        try { data = text ? JSON.parse(text) : {}; } catch (_e) { data = { detail: text }; }
+        if (!resp.ok) {
+          const detail = (data && data.detail) ? data.detail : ("HTTP " + resp.status);
+          throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+        }
+        return data;
+      }
+
+      function ingestResultMessage(data) {
+        const docs = data.documents || 0;
+        const chunks = data.chunks || 0;
+        let msg = "Ingested " + docs + " document(s) → " + chunks + " chunk(s).";
+        if (data.skipped_files && data.skipped_files.length) {
+          msg += " Skipped: " + data.skipped_files.join(", ") + ".";
+        }
+        return msg;
+      }
+
+      // Wire up file pickers
+      const localPicker = setupFilePicker("local", [".pdf", ".docx", ".txt", ".md"]);
+      const transcriptsPicker = setupFilePicker("transcripts", [".txt"]);
+      const discordPicker = setupFilePicker("discord", [".json"]);
+
+      async function runUpload(kind, picker, recursive) {
+        const files = picker.getFiles();
+        if (!files.length) return;
+        picker.submit.disabled = true;
+        setStatus(picker.status, "Uploading + ingesting…", "loading");
+        const fd = new FormData();
+        for (let i = 0; i < files.length; i++) fd.append("files", files[i]);
+        if (recursive !== undefined) fd.append("recursive", String(recursive));
+        try {
+          const data = await postUpload("/ingest/" + kind, fd);
+          setStatus(picker.status, ingestResultMessage(data), "success");
+          picker.reset();
+        } catch (err) {
+          setStatus(picker.status, "Error: " + err.message, "error");
+        } finally {
+          picker.submit.disabled = picker.getFiles().length === 0;
+        }
+      }
+
+      document.getElementById("local-submit").addEventListener("click", function () {
+        runUpload("local", localPicker, true);
+      });
+      document.getElementById("transcripts-submit").addEventListener("click", function () {
+        runUpload("transcripts", transcriptsPicker);
+      });
+      document.getElementById("discord-submit").addEventListener("click", function () {
+        runUpload("discord", discordPicker);
+      });
+
+      const notionPagesEl = document.getElementById("notion-pages");
+      const notionDbsEl = document.getElementById("notion-dbs");
+      const notionStatus = document.getElementById("notion-status");
+      const notionSubmit = document.getElementById("notion-submit");
+
+      notionSubmit.addEventListener("click", async function () {
+        const pageIds = parseNotionIds(notionPagesEl.value);
+        const dbIds = parseNotionIds(notionDbsEl.value);
+        if (!pageIds.length && !dbIds.length) {
+          setStatus(notionStatus, "Paste at least one page or database ID.", "error");
+          return;
+        }
+        notionSubmit.disabled = true;
+        setStatus(notionStatus, "Fetching from Notion + embedding…", "loading");
+        try {
+          const data = await postJSON("/ingest/notion", {
+            page_ids: pageIds,
+            database_ids: dbIds,
+          });
+          setStatus(notionStatus, ingestResultMessage(data), "success");
+          notionPagesEl.value = "";
+          notionDbsEl.value = "";
+        } catch (err) {
+          setStatus(notionStatus, "Error: " + err.message, "error");
+        } finally {
+          notionSubmit.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

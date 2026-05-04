@@ -1,0 +1,29 @@
+# --- LlamaIndex core + integrations (0.14.x — supports Python 3.11–3.13) ---
+llama-index==0.14.21
+llama-index-vector-stores-pinecone==0.8.0
+llama-index-embeddings-openai==0.6.0
+llama-index-llms-anthropic==0.11.3
+llama-index-readers-notion==0.5.0
+llama-index-readers-discord==0.5.0
+llama-index-readers-file==0.6.0
+
+# Pin Pinecone SDK used by setup script + vector store (package name is "pinecone", not pinecone-client)
+pinecone==7.3.0
+
+# --- Direct API clients (ticket chain + embeddings fallbacks) ---
+anthropic==0.97.0
+openai==2.33.0
+
+# --- Notion API client ---
+notion-client==2.2.1
+
+# --- Web framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# --- Misc ---
+requests==2.33.1
+python-dotenv==1.0.1
+pydantic==2.13.3
+python-docx==1.1.2

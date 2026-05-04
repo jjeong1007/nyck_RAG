@@ -1,0 +1,60 @@
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtualenvs
+.venv/
+venv/
+env/
+ENV/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Local data (don't commit raw company knowledge)
+data/*
+!data/.gitkeep
+
+# Notion / discord exports caches
+.cache/
+*.cache
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# LlamaIndex local storage (we use Pinecone, but just in case)
+storage/
