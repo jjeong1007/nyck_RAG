@@ -2,12 +2,13 @@
 
 Endpoints:
     - ``GET  /health``  → ``{"status": "ok"}``
-    - ``POST /qa``      → ``{answer, sources}`` (optional ``messages`` = prior chat)
+    - ``POST /qa``      → ``{answer, sources, retrieval_meta}`` (``routing``, ``messages``, …)
     - ``POST /ticket``  → ``{ticket, sources, notion_url}``
     - ``POST /ingest/local`` (multipart) → upload + ingest PDF/DOCX/TXT/MD
     - ``POST /ingest/transcripts`` (multipart) → upload + ingest .txt transcripts
     - ``POST /ingest/discord`` (multipart) → upload + ingest DiscordChatExporter JSON
-    - ``POST /ingest/notion`` → ingest Notion pages / databases by ID
+    - ``POST /ingest/notion`` → ingest Notion pages / databases by ID (batch)
+    - ``POST /ingest/notion/stream`` → same IDs with Server-Sent Events progress (one ID per request)
     - ``GET  /sources``  → Pinecone metadata rollup by ``source_type`` / file
     - ``GET  /sources/export`` → merged chunk text for one source (Markdown download)
     - ``DELETE /sources`` → remove all vectors for one ``source_type`` + ``file_name``
@@ -21,6 +22,7 @@ so a missing API key (e.g. Notion-only access) doesn't prevent startup.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import tempfile
@@ -40,7 +42,7 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -60,7 +62,7 @@ from core.ticket_chain import (
 )
 from ingest.ingest_discord import ingest_discord
 from ingest.ingest_local import LOCAL_FILE_EXTENSIONS, ingest_local
-from ingest.ingest_notion import ingest_notion
+from ingest.ingest_notion import ingest_notion, iter_ingest_notion_events
 from ingest.ingest_transcripts import ingest_transcripts
 
 logger = logging.getLogger("company_rag")
@@ -157,6 +159,25 @@ class QARequest(BaseModel):
         max_length=40,
         description="Prior user/assistant turns, in order. Omit the current question.",
     )
+    routing: Literal["auto", "manual"] = Field(
+        default="auto",
+        description=(
+            "auto: planner chooses qa vs synthesis and which source_type slices to search. "
+            "manual: use mode and source_types from this request."
+        ),
+    )
+    mode: Literal["qa", "synthesis"] = Field(
+        default="qa",
+        description="Used only when routing is manual.",
+    )
+    source_types: Optional[List[str]] = Field(
+        default=None,
+        max_length=12,
+        description=(
+            "Used only when routing is manual: restrict retrieval to these "
+            'metadata source_type values (e.g. ["transcript"]). Omit to search all sources.'
+        ),
+    )
 
     @field_validator("question")
     @classmethod
@@ -165,6 +186,16 @@ class QARequest(BaseModel):
         if not cleaned:
             raise ValueError("question must be non-empty")
         return cleaned
+
+    @field_validator("source_types", mode="before")
+    @classmethod
+    def _normalize_source_types(cls, value: object) -> Optional[List[str]]:
+        if value is None:
+            return None
+        if not isinstance(value, list):
+            raise ValueError("source_types must be a list of strings or omitted")
+        out = [str(item).strip() for item in value if str(item).strip()]
+        return out or None
 
 
 class QASourceModel(BaseModel):
@@ -175,9 +206,22 @@ class QASourceModel(BaseModel):
     preview: str
 
 
+class QARetrievalMetaModel(BaseModel):
+    """Echo of how this answer was retrieved (for UI transparency)."""
+
+    mode: Literal["qa", "synthesis"]
+    source_types: Optional[List[str]] = Field(
+        default=None,
+        description="Which categories were searched; null means all ingested types.",
+    )
+    routing: Literal["auto", "manual"]
+    creative_brainstorm: bool = False
+
+
 class QAResponse(BaseModel):
     answer: str
     sources: List[QASourceModel]
+    retrieval_meta: QARetrievalMetaModel
 
 
 class TicketRequest(BaseModel):
@@ -292,6 +336,12 @@ def _qa_result_to_response(result: QAResult) -> QAResponse:
     return QAResponse(
         answer=result.answer,
         sources=[QASourceModel(**s.to_dict()) for s in result.sources],
+        retrieval_meta=QARetrievalMetaModel(
+            mode=result.retrieval_mode,
+            source_types=result.source_scope,
+            routing=result.retrieval_routing,
+            creative_brainstorm=result.creative_brainstorm,
+        ),
     )
 
 
@@ -433,12 +483,19 @@ async def delete_merged_source(
 async def qa(req: QARequest) -> QAResponse:
     """Answer a question using the company knowledge base.
 
-    Returns the model's answer plus structured source citations.
+    Returns the answer, source citations, and ``retrieval_meta`` describing
+    whether auto routing was used and which source categories were searched.
     """
     try:
         chain = _get_qa_chain()
         history = [(m.role, m.content) for m in req.messages]
-        result = chain.ask(req.question, chat_history=history)
+        result = chain.ask(
+            req.question,
+            chat_history=history,
+            routing=req.routing,
+            mode=req.mode,
+            source_types=req.source_types,
+        )
         return _qa_result_to_response(result)
     except ValueError as exc:
         raise HTTPException(
@@ -743,6 +800,45 @@ async def ingest_discord_endpoint(
             accepted_files=accepted,
             skipped_files=skipped,
         )
+
+
+@app.post("/ingest/notion/stream")
+async def ingest_notion_stream(req: NotionIngestRequest) -> StreamingResponse:
+    """Ingest **exactly one** Notion page or one database with SSE progress.
+
+    Each event is ``data: <json>\\n\\n`` where JSON has ``type`` of ``progress``,
+    ``complete``, or ``error``. Percent values reflect real pipeline phases (fetch,
+    per-page metadata, chunk, embed); embedding has no sub-step granularity—only
+    start/end milestones.
+    """
+    pages = list(req.page_ids)
+    dbs = list(req.database_ids)
+    if len(pages) + len(dbs) != 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Stream ingest requires exactly one page_id OR one database_id.",
+        )
+
+    def event_generator():
+        try:
+            for ev in iter_ingest_notion_events(
+                page_ids=pages if pages else None,
+                database_ids=dbs if dbs else None,
+            ):
+                yield f"data: {json.dumps(ev)}\n\n"
+        except Exception as exc:
+            logger.exception("Notion stream ingestion failed")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.post("/ingest/notion", response_model=IngestResponse)

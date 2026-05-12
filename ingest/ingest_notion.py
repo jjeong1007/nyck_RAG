@@ -16,7 +16,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from typing import Any, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple
 
 import requests
 from dotenv import load_dotenv
@@ -187,6 +187,119 @@ def _upsert_nodes(nodes: List[BaseNode]) -> None:
     index.insert_nodes(nodes)
 
 
+def iter_ingest_notion_events(
+    *,
+    page_ids: Optional[List[str]] = None,
+    database_ids: Optional[List[str]] = None,
+) -> Iterator[Dict[str, Any]]:
+    """Run Notion ingestion and yield progress events for streaming APIs.
+
+    Percentages are derived from real phases (no timer-based fakes):
+
+    - ``notion_fetch``: single blocking ``load_data`` call from Notion / LlamaIndex.
+    - ``metadata``: one Notion REST GET per loaded page for title/date (linear).
+    - ``chunk``: splitting documents into nodes.
+    - ``embed``: embedding + Pinecone upsert (start/end only — no sub-step hooks).
+
+    Event shapes:
+
+    - ``{"type": "progress", "phase": str, "percent": int, ...}``
+    - ``{"type": "complete", "pages": int, "chunks": int}``
+    - ``{"type": "error", "message": str}``
+
+    Yields:
+        Progress and terminal dicts; consumers should stop after ``complete`` or ``error``.
+    """
+    load_dotenv(dotenv_path=get_repo_root() / ".env", override=False)
+    page_ids = list(page_ids or [])
+    database_ids = list(database_ids or [])
+    if not page_ids and not database_ids:
+        yield {"type": "error", "message": "Provide at least one page ID or database ID."}
+        return
+
+    try:
+        token = _resolve_notion_token()
+    except ValueError as exc:
+        yield {"type": "error", "message": str(exc)}
+        return
+
+    yield {
+        "type": "progress",
+        "phase": "notion_fetch",
+        "percent": 5,
+        "label": "Fetching content from Notion…",
+    }
+
+    try:
+        reader = NotionPageReader(integration_token=token)
+        docs = reader.load_data(
+            page_ids=page_ids,
+            database_ids=database_ids or None,
+        )
+    except Exception as exc:
+        yield {"type": "error", "message": f"Notion load failed: {exc}"}
+        return
+
+    docs = [d for d in docs if (d.text or "").strip()]
+    if not docs:
+        yield {
+            "type": "progress",
+            "phase": "notion_fetch",
+            "percent": 100,
+            "label": "No pages returned text.",
+        }
+        yield {"type": "complete", "pages": 0, "chunks": 0}
+        return
+
+    n = len(docs)
+    yield {
+        "type": "progress",
+        "phase": "notion_fetch",
+        "percent": 22,
+        "pages_loaded": n,
+        "label": f"Loaded {n} page(s) from Notion.",
+    }
+
+    for i, doc in enumerate(docs, start=1):
+        pid = str(doc.id_ or doc.metadata.get("page_id", ""))
+        title, date_str = fetch_page_title_and_date(token, pid)
+        meta = dict(doc.metadata)
+        meta[METADATA_FILE_NAME] = f"{title}.md"
+        meta[METADATA_DATE] = date_str
+        doc.metadata = meta
+        pct = 22 + round(43 * i / max(n, 1))
+        yield {
+            "type": "progress",
+            "phase": "metadata",
+            "current": i,
+            "total": n,
+            "percent": min(pct, 65),
+            "label": f"Page metadata {i}/{n}",
+        }
+
+    yield {"type": "progress", "phase": "chunk", "percent": 68, "label": "Chunking…"}
+
+    nodes = chunk_notion_documents(docs)
+    _normalize_notion_nodes(nodes)
+
+    yield {
+        "type": "progress",
+        "phase": "embed",
+        "percent": 72,
+        "chunks_total": len(nodes),
+        "label": "Embedding and uploading to Pinecone…",
+    }
+
+    try:
+        _upsert_nodes(nodes)
+    except Exception as exc:
+        yield {"type": "error", "message": f"Upsert failed: {exc}"}
+        return
+
+    yield {"type": "progress", "phase": "done", "percent": 100, "label": "Done."}
+    yield {"type": "complete", "pages": n, "chunks": len(nodes)}
+
+
 def ingest_notion(
     *,
     page_ids: Optional[List[str]] = None,
@@ -204,19 +317,18 @@ def ingest_notion(
     Side effects:
         Reads ``.env``, calls OpenAI + Notion + Pinecone.
     """
-    load_dotenv(dotenv_path=get_repo_root() / ".env", override=False)
-    token = _resolve_notion_token()
-    documents = load_notion_documents(
-        token=token,
+    pages = 0
+    chunks = 0
+    for ev in iter_ingest_notion_events(
         page_ids=page_ids,
         database_ids=database_ids,
-    )
-    if not documents:
-        return (0, 0)
-    nodes = chunk_notion_documents(documents)
-    _normalize_notion_nodes(nodes)
-    _upsert_nodes(nodes)
-    return (len(documents), len(nodes))
+    ):
+        if ev["type"] == "complete":
+            pages = int(ev.get("pages") or 0)
+            chunks = int(ev.get("chunks") or 0)
+        elif ev["type"] == "error":
+            raise ValueError(ev.get("message") or "Notion ingestion failed")
+    return pages, chunks
 
 
 def main() -> None:

@@ -60,6 +60,8 @@
       margin: 0;
       padding: 0;
       height: 100%;
+      max-height: 100%;
+      overflow: hidden;
       background: var(--page-bg);
       color: var(--text-body);
       font-family: 'Inter', ui-sans-serif, system-ui, -apple-system,
@@ -94,7 +96,12 @@
     .layout {
       display: grid;
       grid-template-columns: 221px 1fr;
+      grid-template-rows: 1fr;
       height: 100vh;
+      height: 100dvh;
+      max-height: 100vh;
+      max-height: 100dvh;
+      overflow: hidden;
       transition: grid-template-columns 200ms ease;
     }
     .layout.sidebar-collapsed {
@@ -109,6 +116,9 @@
       flex-direction: column;
       gap: 4px;
       min-width: 0;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
       transition: padding 200ms ease;
     }
     .sidebar-brand-row {
@@ -313,11 +323,17 @@
     /* ---------- Main panel (white card on gray page) ---------- */
     .main-wrap {
       padding: 16px 16px 16px 0;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
     .main {
       background: var(--card-bg);
       border-radius: var(--radius-card);
-      height: 100%;
+      flex: 1;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -325,7 +341,10 @@
 
     .thread {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -380,6 +399,7 @@
       gap: 12px;
       justify-content: center;
       padding: 8px 0 16px;
+      flex-shrink: 0;
     }
     .suggestion {
       background: transparent;
@@ -487,6 +507,7 @@
       display: flex;
       justify-content: center;
       background: var(--card-bg);
+      flex-shrink: 0;
     }
     .composer {
       width: 100%;
@@ -533,6 +554,43 @@
       font-size: 12px;
       color: var(--text-soft);
       flex-wrap: wrap;
+      flex: 1;
+      min-width: 0;
+    }
+    .composer-opt {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .composer-opt input {
+      accent-color: var(--text-heading);
+    }
+    .composer-source-types {
+      flex: 1;
+      min-width: 120px;
+      max-width: 280px;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      background: var(--surface-card, #fff);
+      color: var(--text-body);
+      font-family: inherit;
+    }
+    .composer-source-types::placeholder {
+      color: var(--text-soft);
+      opacity: 0.85;
+    }
+    .qa-retrieval-meta {
+      font-size: 11px;
+      line-height: 1.35;
+      color: var(--text-soft);
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(0, 0, 0, 0.06);
     }
     .icon-btn {
       appearance: none;
@@ -905,6 +963,227 @@
     .field-help {
       font-size: 11px;
       color: var(--text-soft);
+    }
+
+    /* Notion ingest: pill queue + streaming progress */
+    .notion-ingest-field {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .notion-pill-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: flex-start;
+      min-height: 0;
+    }
+    .notion-pill-list:empty {
+      display: none;
+    }
+    .notion-pill {
+      position: relative;
+      display: inline-flex;
+      flex-direction: column;
+      max-width: min(100%, 420px);
+      padding: 8px 34px 10px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--pill-border);
+      background: #fff;
+      font-size: 13px;
+      line-height: 1.35;
+      color: var(--text-body);
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+    .notion-pill:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .notion-pill.is-queued {
+      border-color: var(--border);
+      background: #fafafa;
+      color: var(--text-soft);
+    }
+    .notion-pill.is-running {
+      border-color: rgba(14, 109, 249, 0.45);
+      box-shadow: 0 0 0 1px rgba(14, 109, 249, 0.08);
+    }
+    .notion-pill.is-done {
+      border-color: rgba(22, 163, 74, 0.45);
+      background: rgba(22, 163, 74, 0.04);
+    }
+    .notion-pill.is-failed {
+      border-color: rgba(220, 38, 38, 0.45);
+      background: #fef2f2;
+    }
+    .notion-pill-shake {
+      animation: notionPillShake 380ms ease;
+    }
+    @keyframes notionPillShake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    .notion-pill-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding-right: 4px;
+    }
+    .notion-pill-kind {
+      flex-shrink: 0;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--accent-soft-bg);
+      color: var(--accent);
+      margin-top: 1px;
+    }
+    .notion-pill-kind.db {
+      background: #f3e8ff;
+      color: #7c3aed;
+    }
+    .notion-pill-text {
+      flex: 1;
+      min-width: 0;
+      word-break: break-word;
+    }
+    .notion-pill-remove {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--text-soft);
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0;
+      transition: background 100ms ease, color 100ms ease;
+    }
+    .notion-pill-remove:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: var(--text-body);
+    }
+    .notion-pill-remove:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .notion-pill-meta {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-soft);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .notion-pill-meta .material-symbols-outlined {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+      color: var(--success);
+    }
+    .notion-pill.is-failed .notion-pill-meta .material-symbols-outlined {
+      color: var(--danger);
+    }
+    .notion-pill-progress-track {
+      margin-top: 8px;
+      height: 3px;
+      border-radius: 2px;
+      background: rgba(0, 0, 0, 0.06);
+      overflow: hidden;
+    }
+    .notion-pill-progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent), #9333ea);
+      transition: width 220ms ease;
+    }
+    .notion-pill.is-done .notion-pill-progress-fill {
+      background: var(--success);
+    }
+    .notion-pill.is-failed .notion-pill-progress-fill {
+      background: var(--danger);
+      width: 100% !important;
+      opacity: 0.35;
+    }
+    .notion-pill--settled .notion-pill-progress-track,
+    .notion-pill--settled .notion-pill-meta-detail {
+      opacity: 0;
+      max-height: 0;
+      margin-top: 0;
+      overflow: hidden;
+      transition: opacity 240ms ease, max-height 240ms ease;
+    }
+    .notion-pill-retry {
+      margin-top: 6px;
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .notion-pill-retry:hover {
+      color: #0b57c7;
+    }
+    .notion-pill-input-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .notion-pill-input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-family: inherit;
+      font-size: 14px;
+      background: #fff;
+      color: var(--text-body);
+      outline: 0;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .notion-pill-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(14, 109, 249, 0.12);
+    }
+    .notion-pill-input.notion-pill-input--error {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+    }
+    .notion-pill-error {
+      font-size: 12px;
+      color: var(--danger);
+      margin: 0;
+    }
+    .notion-pill-error.hidden {
+      display: none;
+    }
+    .notion-pill-help kbd {
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: #fafafa;
     }
 
     .ingest-card-foot {
@@ -1375,7 +1654,12 @@
       .layout,
       .layout.sidebar-collapsed {
         grid-template-columns: 1fr;
-        height: auto;
+        grid-template-rows: auto 1fr;
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100vh;
+        max-height: 100dvh;
+        overflow: hidden;
       }
       .sidebar-toggle {
         display: none;
@@ -1427,7 +1711,7 @@
       .sidebar-spacer { flex: 0; }
       .health-card { margin: 0 0 0 auto; padding: 6px 10px; }
       .health-sub { display: none; }
-      .main-wrap { padding: 12px; }
+      .main-wrap { padding: 12px; min-height: 0; }
       .welcome h1 { font-size: 30px; }
       .suggestion { font-size: 13px; padding: 8px 12px; }
       .qa-shell { flex-direction: column; flex: 1; min-height: 0; }
@@ -1541,6 +1825,10 @@
                 <button class="suggestion" data-prompt="Summarize the most recent Acme call.">Recent Acme call</button>
                 <button class="suggestion" data-prompt="Who owns onboarding for new design partners?">Onboarding owner</button>
                 <button class="suggestion" data-prompt="What features did customers ask for last month?">Recent feature requests</button>
+                <button
+                  class="suggestion"
+                  data-prompt="What is our primary user persona based on customer conversations? Include goals, pain points, jobs-to-be-done, and buying triggers."
+                >User persona</button>
               </div>
 
               <div class="composer-wrap">
@@ -1548,6 +1836,22 @@
                   <textarea id="qa-input" rows="1" placeholder="Send a message"></textarea>
                   <div class="composer-row">
                     <div class="composer-meta">
+                      <label class="composer-opt" title="Planner picks transcripts vs Notion vs all sources and Q&A vs synthesis depth">
+                        <input type="checkbox" id="qa-auto-routing" checked />
+                        <span>Auto route</span>
+                      </label>
+                      <label class="composer-opt" title="When Auto route is off: force synthesis retrieval depth">
+                        <input type="checkbox" id="qa-synthesis-mode" />
+                        <span>Synthesis</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="qa-source-types"
+                        class="composer-source-types"
+                        placeholder="Sources (optional): transcript, notion…"
+                        autocomplete="off"
+                        aria-label="Restrict retrieval to source types"
+                      />
                       <span id="qa-status" class="status-msg"></span>
                     </div>
                     <button id="qa-submit" class="send-btn" type="submit" aria-label="Send">
@@ -1759,22 +2063,28 @@
                   </div>
                 </div>
 
-                <div class="form-grid">
-                  <label class="field">
-                    <span class="field-label">Page IDs</span>
-                    <textarea id="notion-pages" rows="3" placeholder="One page ID or URL per line"></textarea>
-                    <span class="field-help">UUIDs or full Notion URLs accepted.</span>
-                  </label>
-                  <label class="field">
-                    <span class="field-label">Database IDs</span>
-                    <textarea id="notion-dbs" rows="3" placeholder="One database ID or URL per line"></textarea>
-                    <span class="field-help">All pages in each database will be ingested.</span>
-                  </label>
+                <div class="notion-ingest-field">
+                  <div id="notion-pill-list" class="notion-pill-list" role="list" aria-label="Queued Notion sources"></div>
+                  <div class="notion-pill-input-row">
+                    <input
+                      type="text"
+                      id="notion-link-input"
+                      class="notion-pill-input"
+                      placeholder="Paste a Notion page or database URL (or UUID), then press Enter…"
+                      autocomplete="off"
+                      aria-describedby="notion-pill-help notion-link-error"
+                    />
+                  </div>
+                  <p id="notion-link-error" class="notion-pill-error hidden" role="alert"></p>
+                  <p id="notion-pill-help" class="field-help notion-pill-help">
+                    Paste a Notion page or database link, then press <kbd>Enter</kbd> to add it as a pill.
+                    Use <strong>Ingest from Notion</strong> to process every pill in order. Tab does not add a pill.
+                  </p>
                 </div>
 
                 <div class="ingest-card-foot">
                   <span id="notion-status" class="status-msg"></span>
-                  <button id="notion-submit" class="action primary" type="button">
+                  <button id="notion-submit" class="action primary" type="button" disabled>
                     <span class="material-symbols-outlined" aria-hidden="true">cloud_sync</span>
                     Ingest from Notion
                   </button>
@@ -2197,6 +2507,36 @@
       const qaThread = document.getElementById("qa-thread");
       const qaThreadInner = document.getElementById("qa-thread-inner");
       const qaSuggestions = document.getElementById("qa-suggestions");
+      const qaAutoRouting = document.getElementById("qa-auto-routing");
+      const qaSynthesisMode = document.getElementById("qa-synthesis-mode");
+      const qaSourceTypesInput = document.getElementById("qa-source-types");
+      const QA_AUTO_ROUTE_STORAGE_KEY = "nyck_qa_auto_route_v1";
+      const QA_SYNTHESIS_STORAGE_KEY = "nyck_qa_synthesis_v1";
+
+      function refreshQAComposerControls() {
+        var auto = qaAutoRouting && qaAutoRouting.checked;
+        var synLabel = qaSynthesisMode && qaSynthesisMode.closest(".composer-opt");
+        if (qaSynthesisMode) {
+          qaSynthesisMode.disabled = !!auto;
+          if (synLabel) synLabel.style.opacity = auto ? "0.5" : "1";
+        }
+        if (qaSourceTypesInput) {
+          qaSourceTypesInput.disabled = !!auto;
+          qaSourceTypesInput.style.opacity = auto ? "0.5" : "1";
+        }
+      }
+
+      function qaRetrievalMetaHtml(meta) {
+        if (!meta || typeof meta !== "object") return "";
+        var parts = [];
+        parts.push(meta.routing === "manual" ? "Manual routing" : "Auto routing");
+        parts.push(meta.mode === "synthesis" ? "Synthesis depth" : "Q&A depth");
+        if (meta.source_types && meta.source_types.length)
+          parts.push("Sources: " + meta.source_types.join(", "));
+        else parts.push("Sources: all categories");
+        if (meta.creative_brainstorm) parts.push("Creative brainstorm");
+        return '<div class="qa-retrieval-meta">' + escapeHtml(parts.join(" · ")) + "</div>";
+      }
 
       /** In-memory transcript for the active chat (includes optional sources on assistant turns). */
       const qaTranscript = [];
@@ -2213,6 +2553,34 @@
           autosize(qaInput);
           qaInput.focus();
         });
+      })();
+
+      (function () {
+        try {
+          if (qaAutoRouting) {
+            var ar = localStorage.getItem(QA_AUTO_ROUTE_STORAGE_KEY);
+            qaAutoRouting.checked = ar !== "0";
+          }
+          if (qaSynthesisMode && localStorage.getItem(QA_SYNTHESIS_STORAGE_KEY) === "1") {
+            qaSynthesisMode.checked = true;
+          }
+        } catch (_err) {}
+        if (qaAutoRouting) {
+          qaAutoRouting.addEventListener("change", function () {
+            try {
+              localStorage.setItem(QA_AUTO_ROUTE_STORAGE_KEY, qaAutoRouting.checked ? "1" : "0");
+            } catch (_err) {}
+            refreshQAComposerControls();
+          });
+        }
+        if (qaSynthesisMode) {
+          qaSynthesisMode.addEventListener("change", function () {
+            try {
+              localStorage.setItem(QA_SYNTHESIS_STORAGE_KEY, qaSynthesisMode.checked ? "1" : "0");
+            } catch (_err) {}
+          });
+        }
+        refreshQAComposerControls();
       })();
 
       function qaWelcomeInnerHTML() {
@@ -2536,16 +2904,29 @@
         setStatus(qaStatus, "");
 
         try {
-          const data = await postJSON("/qa", {
+          var payload = {
             question: question,
             messages: qaTranscript.map(function (t) {
               return { role: t.role, content: t.content };
             }),
-          });
+            routing: qaAutoRouting && qaAutoRouting.checked ? "auto" : "manual",
+          };
+          if (!(qaAutoRouting && qaAutoRouting.checked)) {
+            payload.mode = qaSynthesisMode && qaSynthesisMode.checked ? "synthesis" : "qa";
+            var typesRaw = qaSourceTypesInput && qaSourceTypesInput.value ? qaSourceTypesInput.value.trim() : "";
+            if (typesRaw) {
+              payload.source_types = typesRaw.split(",").map(function (s) {
+                return s.trim();
+              }).filter(Boolean);
+            }
+          }
+          const data = await postJSON("/qa", payload);
           const sources = Array.isArray(data.sources) ? data.sources : [];
           const chips = sources.map(chipForSource).join("");
+          var metaLine = qaRetrievalMetaHtml(data.retrieval_meta);
           pending.innerHTML =
             '<div class="bubble assistant">' + escapeHtml(data.answer || "") + '</div>' +
+            metaLine +
             (chips ? '<div class="source-chips">' + chips + '</div>' : "");
           qaTranscript.push({ role: "user", content: question });
           qaTranscript.push({ role: "assistant", content: data.answer || "", sources: sources });
@@ -3077,6 +3458,489 @@
         return ids;
       }
 
+      function extractNotionUuid(token) {
+        if (!token || typeof token !== "string") return null;
+        token = token.trim();
+        if (!token) return null;
+        var m = token.match(
+          /([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/
+        );
+        if (m) return m[1].toLowerCase();
+        m = token.match(/([0-9a-fA-F]{32})/);
+        if (!m) return null;
+        var id = m[1].toLowerCase();
+        return (
+          id.slice(0, 8) +
+          "-" +
+          id.slice(8, 12) +
+          "-" +
+          id.slice(12, 16) +
+          "-" +
+          id.slice(16, 20) +
+          "-" +
+          id.slice(20)
+        );
+      }
+
+      function isLikelyNotionUrl(raw) {
+        return (
+          /notion\.(so|site)\//i.test(raw) ||
+          /\.notion\.site\//i.test(raw)
+        );
+      }
+
+      function validateNotionLinkInput(raw) {
+        var t = (raw || "").trim();
+        if (!t) return { ok: false, message: "Enter a Notion link or UUID." };
+        var id = extractNotionUuid(t);
+        if (!id) return { ok: false, message: "Not a valid Notion link or UUID." };
+        if (/^https?:\/\//i.test(t) && !isLikelyNotionUrl(t)) {
+          return {
+            ok: false,
+            message: "URL must be a Notion link (notion.so or notion.site).",
+          };
+        }
+        return { ok: true, id: id };
+      }
+
+      function guessNotionKind(raw) {
+        var s = (raw || "").trim().toLowerCase();
+        if (/[?&]v=[a-f0-9-]{32,36}/.test(s)) return "database";
+        if (/notion\.so\/[^\s#]+\?([^#]*&)?v=/.test(s)) return "database";
+        return "page";
+      }
+
+      function truncateMiddle(str, max) {
+        if (!str || str.length <= max) return str || "";
+        var half = Math.floor((max - 1) / 2);
+        return str.slice(0, half) + "…" + str.slice(str.length - half);
+      }
+
+      async function streamNotionIngest(body, onEvent) {
+        var res = await fetch(apiUrl("/ingest/notion/stream"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+          },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          var msg = "Request failed (" + res.status + ")";
+          try {
+            var j = await res.json();
+            if (j.detail)
+              msg =
+                typeof j.detail === "string"
+                  ? j.detail
+                  : JSON.stringify(j.detail);
+          } catch (_e) {
+            try {
+              msg = await res.text();
+            } catch (_e2) {}
+          }
+          throw new Error(msg);
+        }
+        var reader = res.body.getReader();
+        var dec = new TextDecoder();
+        var buf = "";
+        while (true) {
+          var chunk = await reader.read();
+          if (chunk.done) break;
+          buf += dec.decode(chunk.value, { stream: true });
+          var idx;
+          while ((idx = buf.indexOf("\n\n")) !== -1) {
+            var block = buf.slice(0, idx).trim();
+            buf = buf.slice(idx + 2);
+            if (block.indexOf("data:") !== 0) continue;
+            var line = block.replace(/^data:\s*/, "");
+            var ev;
+            try {
+              ev = JSON.parse(line);
+            } catch (_err) {
+              continue;
+            }
+            onEvent(ev);
+          }
+        }
+      }
+
+      const notionPillList = document.getElementById("notion-pill-list");
+      const notionLinkInput = document.getElementById("notion-link-input");
+      const notionLinkError = document.getElementById("notion-link-error");
+      const notionStatus = document.getElementById("notion-status");
+      const notionSubmit = document.getElementById("notion-submit");
+
+      var notionPills = [];
+      var notionWorkerRunning = false;
+
+      function notionIdKey(dashed) {
+        return dashed.replace(/-/g, "").toLowerCase();
+      }
+
+      function showNotionInputError(msg) {
+        notionLinkError.textContent = msg || "";
+        notionLinkError.classList.toggle("hidden", !msg);
+        notionLinkInput.classList.toggle("notion-pill-input--error", !!msg);
+      }
+
+      function updateNotionSubmitDisabled() {
+        notionSubmit.disabled = !notionPills.some(function (p) {
+          return p.state === "idle";
+        });
+      }
+
+      function renderNotionPills() {
+        if (!notionPillList) return;
+        notionPillList.innerHTML = notionPills
+          .map(function (p) {
+            var st = p.state;
+            var cls =
+              st === "queued"
+                ? "is-queued"
+                : st === "running"
+                  ? "is-running"
+                  : st === "done"
+                    ? "is-done"
+                    : st === "failed"
+                      ? "is-failed"
+                      : "";
+            var kindLabel = p.kind === "database" ? "DB" : "Page";
+            var kindCls = p.kind === "database" ? " db" : "";
+            var metaHtml = "";
+            if (st === "idle") {
+              metaHtml =
+                '<span class="notion-pill-meta-detail">Ready · press Ingest</span>';
+            } else if (st === "queued") {
+              metaHtml =
+                '<span class="notion-pill-meta-detail">Queued · 0%</span>';
+            } else if (st === "running") {
+              metaHtml =
+                '<span class="notion-pill-meta-detail">Ingesting… ' +
+                (p.percent || 0) +
+                "%" +
+                (p.etaText
+                  ? " · " + escapeHtml(p.etaText)
+                  : "") +
+                "</span>";
+            } else if (st === "done") {
+              metaHtml =
+                '<span class="material-symbols-outlined" aria-hidden="true">check_circle</span>' +
+                '<span class="notion-pill-meta-detail">Done · ' +
+                (p.pages || 0) +
+                " pg · " +
+                (p.chunks || 0) +
+                " chunks</span>";
+            } else if (st === "failed") {
+              metaHtml =
+                '<span class="material-symbols-outlined" aria-hidden="true">error</span>' +
+                '<span class="notion-pill-meta-detail">' +
+                escapeHtml(p.errorMessage || "Failed") +
+                "</span>";
+            }
+            var barWidth =
+              st === "failed"
+                ? 100
+                : st === "done"
+                  ? 100
+                  : Math.max(0, Math.min(100, p.percent || 0));
+            var settled = p.settled ? " notion-pill--settled" : "";
+            var retry =
+              st === "failed"
+                ? '<button type="button" class="notion-pill-retry" data-pill="' +
+                  escapeHtml(p.uid) +
+                  '">Retry</button>'
+                : "";
+            return (
+              '<div class="notion-pill ' +
+              cls +
+              settled +
+              '" role="listitem" tabindex="0" data-pill="' +
+              escapeHtml(p.uid) +
+              '">' +
+              '<button type="button" class="notion-pill-remove" data-pill="' +
+              escapeHtml(p.uid) +
+              '" aria-label="Remove from queue" ' +
+              (st === "running" ? "disabled" : "") +
+              ">×</button>" +
+              '<div class="notion-pill-top">' +
+              '<span class="notion-pill-kind' +
+              kindCls +
+              '">' +
+              kindLabel +
+              "</span>" +
+              '<span class="notion-pill-text">' +
+              escapeHtml(truncateMiddle(p.label || p.raw, 64)) +
+              "</span>" +
+              "</div>" +
+              '<div class="notion-pill-meta">' +
+              metaHtml +
+              "</div>" +
+              '<div class="notion-pill-progress-track"><div class="notion-pill-progress-fill" style="width:' +
+              barWidth +
+              '%"></div></div>' +
+              retry +
+              "</div>"
+            );
+          })
+          .join("");
+      }
+
+      function clearNotionPillDismissTimer(p) {
+        if (p && p.dismissTimer != null) {
+          clearTimeout(p.dismissTimer);
+          p.dismissTimer = null;
+        }
+      }
+
+      function scheduleNotionPillAutoRemove(pill) {
+        clearNotionPillDismissTimer(pill);
+        var uid = pill.uid;
+        pill.dismissTimer = setTimeout(function () {
+          pill.dismissTimer = null;
+          var cur = notionPills.find(function (x) {
+            return x.uid === uid;
+          });
+          if (!cur || cur.state !== "done") return;
+          notionPills = notionPills.filter(function (x) {
+            return x.uid !== uid;
+          });
+          renderNotionPills();
+          updateNotionSubmitDisabled();
+        }, 5000);
+      }
+
+      function removeNotionPillByUid(uid) {
+        var p = notionPills.find(function (x) {
+          return x.uid === uid;
+        });
+        if (!p || p.state === "running") return;
+        clearNotionPillDismissTimer(p);
+        notionPills = notionPills.filter(function (x) {
+          return x.uid !== uid;
+        });
+        renderNotionPills();
+        updateNotionSubmitDisabled();
+      }
+
+      function retryNotionPill(uid) {
+        var p = notionPills.find(function (x) {
+          return x.uid === uid;
+        });
+        if (!p) return;
+        clearNotionPillDismissTimer(p);
+        p.state = "queued";
+        p.percent = 0;
+        p.settled = false;
+        p.errorMessage = "";
+        p.etaText = "";
+        renderNotionPills();
+        updateNotionSubmitDisabled();
+        void runNotionIngestWorker();
+      }
+
+      function tryAddNotionPill() {
+        showNotionInputError("");
+        var raw = notionLinkInput.value;
+        var v = validateNotionLinkInput(raw);
+        if (!v.ok) {
+          showNotionInputError(v.message);
+          return;
+        }
+        var key = notionIdKey(v.id);
+        if (
+          notionPills.some(function (p) {
+            return notionIdKey(p.id) === key;
+          })
+        ) {
+          showNotionInputError("Already added.");
+          notionLinkInput.classList.add("notion-pill-shake");
+          setTimeout(function () {
+            notionLinkInput.classList.remove("notion-pill-shake");
+          }, 400);
+          return;
+        }
+        notionPills.push({
+          uid:
+            "np_" +
+            Date.now() +
+            "_" +
+            Math.random().toString(36).slice(2, 9),
+          id: v.id,
+          kind: guessNotionKind(raw),
+          raw: raw.trim(),
+          label: raw.trim(),
+          state: "idle",
+          percent: 0,
+          settled: false,
+          etaText: "",
+          pages: 0,
+          chunks: 0,
+          errorMessage: "",
+        });
+        notionLinkInput.value = "";
+        renderNotionPills();
+        updateNotionSubmitDisabled();
+        notionLinkInput.focus();
+      }
+
+      async function runNotionIngestWorker() {
+        if (notionWorkerRunning) return;
+        notionWorkerRunning = true;
+        updateNotionSubmitDisabled();
+        try {
+          while (
+            notionPills.some(function (p) {
+              return p.state === "queued";
+            })
+          ) {
+            var pill = notionPills.find(function (p) {
+              return p.state === "queued";
+            });
+            if (!pill) break;
+            pill.state = "running";
+            pill.percent = 0;
+            pill.etaText = "";
+            var t0 = Date.now();
+            renderNotionPills();
+            var body =
+              pill.kind === "database"
+                ? { page_ids: [], database_ids: [pill.id] }
+                : { page_ids: [pill.id], database_ids: [] };
+            try {
+              await streamNotionIngest(body, function (ev) {
+                if (ev.type === "progress") {
+                  pill.percent =
+                    typeof ev.percent === "number"
+                      ? ev.percent
+                      : pill.percent || 0;
+                  var elapsed = Date.now() - t0;
+                  if (pill.percent >= 10 && pill.percent < 97 && elapsed > 600) {
+                    var rate = pill.percent / elapsed;
+                    var rem = (100 - pill.percent) / rate;
+                    pill.etaText =
+                      rem > 3000 && rem < 1200000
+                        ? "~" + Math.round(rem / 1000) + "s left"
+                        : "";
+                  }
+                  renderNotionPills();
+                } else if (ev.type === "error") {
+                  throw new Error(ev.message || "Ingestion failed");
+                } else if (ev.type === "complete") {
+                  pill.pages = ev.pages != null ? ev.pages : 0;
+                  pill.chunks = ev.chunks != null ? ev.chunks : 0;
+                }
+              });
+              pill.state = "done";
+              pill.percent = 100;
+              pill.etaText = "";
+              renderNotionPills();
+              setStatus(
+                notionStatus,
+                "Ingested " +
+                  pill.pages +
+                  " page(s) → " +
+                  pill.chunks +
+                  " chunk(s).",
+                "success"
+              );
+              setTimeout(function () {
+                pill.settled = true;
+                renderNotionPills();
+              }, 2200);
+              scheduleNotionPillAutoRemove(pill);
+            } catch (err) {
+              pill.state = "failed";
+              pill.errorMessage = err.message || String(err);
+              pill.percent = 100;
+              pill.etaText = "";
+              renderNotionPills();
+              setStatus(
+                notionStatus,
+                "Error: " + pill.errorMessage,
+                "error"
+              );
+            }
+          }
+        } finally {
+          notionWorkerRunning = false;
+          updateNotionSubmitDisabled();
+          if (
+            notionPills.some(function (p) {
+              return p.state === "queued";
+            })
+          ) {
+            void runNotionIngestWorker();
+          }
+        }
+      }
+
+      if (notionLinkInput && notionPillList && notionSubmit) {
+        notionLinkInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            tryAddNotionPill();
+            return;
+          }
+          if (e.key === "Backspace" && !notionLinkInput.value.trim()) {
+            var last = notionPills[notionPills.length - 1];
+            if (last && last.state !== "running") {
+              e.preventDefault();
+              clearNotionPillDismissTimer(last);
+              notionPills.pop();
+              renderNotionPills();
+              updateNotionSubmitDisabled();
+            }
+          }
+        });
+
+        notionLinkInput.addEventListener("input", function () {
+          if (notionLinkInput.value.trim()) showNotionInputError("");
+        });
+
+        notionPillList.addEventListener("click", function (e) {
+          var rm = e.target.closest(".notion-pill-remove");
+          if (rm && !rm.disabled) {
+            removeNotionPillByUid(rm.getAttribute("data-pill"));
+            return;
+          }
+          var retry = e.target.closest(".notion-pill-retry");
+          if (retry) {
+            retryNotionPill(retry.getAttribute("data-pill"));
+          }
+        });
+
+        notionPillList.addEventListener("keydown", function (e) {
+          var pillEl = e.target.closest(".notion-pill");
+          if (!pillEl || !notionPillList.contains(pillEl)) return;
+          if (e.key !== "Backspace" && e.key !== "Delete") return;
+          e.preventDefault();
+          removeNotionPillByUid(pillEl.getAttribute("data-pill"));
+        });
+
+        notionSubmit.addEventListener("click", async function () {
+          var queuedAny = false;
+          notionPills.forEach(function (p) {
+            if (p.state === "idle") {
+              p.state = "queued";
+              queuedAny = true;
+            }
+          });
+          if (!queuedAny) return;
+          renderNotionPills();
+          setStatus(notionStatus, "Ingesting from Notion…", "loading");
+          await runNotionIngestWorker();
+          if (
+            !notionPills.some(function (p) {
+              return p.state === "failed";
+            })
+          ) {
+            setStatus(notionStatus, "Queue finished.", "success");
+          }
+          updateNotionSubmitDisabled();
+        });
+      }
+
       function setupFilePicker(kind, accepts) {
         const input = document.getElementById(kind + "-files");
         const list = document.getElementById(kind + "-filelist");
@@ -3217,35 +4081,6 @@
       });
       document.getElementById("discord-submit").addEventListener("click", function () {
         runUpload("discord", discordPicker);
-      });
-
-      const notionPagesEl = document.getElementById("notion-pages");
-      const notionDbsEl = document.getElementById("notion-dbs");
-      const notionStatus = document.getElementById("notion-status");
-      const notionSubmit = document.getElementById("notion-submit");
-
-      notionSubmit.addEventListener("click", async function () {
-        const pageIds = parseNotionIds(notionPagesEl.value);
-        const dbIds = parseNotionIds(notionDbsEl.value);
-        if (!pageIds.length && !dbIds.length) {
-          setStatus(notionStatus, "Paste at least one page or database ID.", "error");
-          return;
-        }
-        notionSubmit.disabled = true;
-        setStatus(notionStatus, "Fetching from Notion + embedding…", "loading");
-        try {
-          const data = await postJSON("/ingest/notion", {
-            page_ids: pageIds,
-            database_ids: dbIds,
-          });
-          setStatus(notionStatus, ingestResultMessage(data), "success");
-          notionPagesEl.value = "";
-          notionDbsEl.value = "";
-        } catch (err) {
-          setStatus(notionStatus, "Error: " + err.message, "error");
-        } finally {
-          notionSubmit.disabled = false;
-        }
       });
     })();
   </script>

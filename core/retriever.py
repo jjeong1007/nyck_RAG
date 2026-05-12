@@ -21,6 +21,7 @@ from llama_index.core import VectorStoreIndex
 from llama_index.core.base.base_retriever import BaseRetriever
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.core.vector_stores.types import MetadataFilters
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 
 # ----- Named defaults (override via environment where noted) ----------------
@@ -188,6 +189,7 @@ def build_vector_index_retriever(
     similarity_top_k: int,
     embed_model: Optional[BaseEmbedding] = None,
     vector_store: Optional[PineconeVectorStore] = None,
+    filters: Optional[MetadataFilters] = None,
 ) -> BaseRetriever:
     """Create a retriever over the Pinecone index with a fixed ``top_k``.
 
@@ -195,6 +197,7 @@ def build_vector_index_retriever(
         similarity_top_k: Number of vectors to retrieve per query.
         embed_model: Optional embedding model (see :func:`build_vector_store_index`).
         vector_store: Optional vector store (see :func:`build_vector_store_index`).
+        filters: Optional Pinecone metadata filters (e.g. restrict ``source_type``).
 
     Returns:
         A LlamaIndex :class:`BaseRetriever` (vector index retriever).
@@ -208,4 +211,4 @@ def build_vector_index_retriever(
         embed_model=embed_model,
         vector_store=vector_store,
     )
-    return index.as_retriever(similarity_top_k=similarity_top_k)
+    return index.as_retriever(similarity_top_k=similarity_top_k, filters=filters)
