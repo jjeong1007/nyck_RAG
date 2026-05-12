@@ -9,7 +9,8 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
+# Python packaging / local build artifacts at repo root only (not ui/build)
+/build/
 develop-eggs/
 dist/
 downloads/

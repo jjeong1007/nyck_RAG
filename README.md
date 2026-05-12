@@ -133,7 +133,16 @@ Health check: <http://localhost:8000/health>
    `.env.example`.
 4. Railway will build, install `requirements.txt`, and run the `Procfile`'s
    `web` process. Done.
-5. Re-run ingestion any time your knowledge base changes — either locally
+5. **Frontend bundle:** The chat markdown UI is built with Vite into `ui/build/`
+   (e.g. `assistant-md.js`). That folder was previously ignored by a root
+   `build/` gitignore rule, so it may never have been pushed — Railway also
+   does **not** run `npm run build` unless you add a custom build step. After
+   pulling latest `.gitignore`, run `cd ui && npm ci && npm run build`, then
+   **commit `ui/build/`** and redeploy. Alternatively, set Railway’s **Build
+   Command** to
+   `pip install -r requirements.txt && cd ui && npm ci && npm run build`
+   (Railway/Nixpacks must have Node available for the `ui` step).
+6. Re-run ingestion any time your knowledge base changes — either locally
    (writes go to the same Pinecone index) or via a Railway one-off command.
 
 ---
