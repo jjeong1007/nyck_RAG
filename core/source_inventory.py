@@ -40,6 +40,7 @@ from core.retriever import (
 CATEGORY_LABELS: dict[str, str] = {
     "local": "Documents",
     "notion": "Notion",
+    "notion_ticket_example": "Notion ticket examples",
     "discord": "Discord",
     "transcript": "Sales call transcripts",
     "unknown": "Other",

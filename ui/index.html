@@ -682,6 +682,249 @@
     .meta-pill.priority-high   { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
     .meta-pill.priority-medium { background: #fefce8; border-color: #fde68a; color: #854d0e; }
     .meta-pill.priority-low    { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+    .meta-pill.editable {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 4px 3px 10px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 100ms ease, border-color 100ms ease;
+    }
+    .meta-pill.editable:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .meta-pill.editable:focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: 2px;
+    }
+    .meta-pill.editable.is-empty { color: var(--text-muted); font-style: italic; }
+    .meta-pill .meta-pill-label { font-weight: 600; }
+    .meta-pill .meta-pill-value { font-weight: 500; }
+    .meta-pill .meta-pill-chevron {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      color: inherit;
+      opacity: 0.6;
+    }
+    .meta-pill .meta-pill-chevron .material-symbols-outlined { font-size: 16px; }
+
+    .ticket-pill-popover {
+      position: fixed;
+      z-index: 1100;
+      min-width: 220px;
+      max-width: 320px;
+      max-height: 360px;
+      overflow: auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+      padding: 6px;
+      font-size: 13px;
+      color: var(--text-body);
+    }
+    .ticket-pill-popover .pill-pop-search {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      margin-bottom: 6px;
+      outline: none;
+    }
+    .ticket-pill-popover .pill-pop-search:focus { border-color: #2563eb; }
+    .ticket-pill-popover .pill-pop-list { display: flex; flex-direction: column; gap: 2px; }
+    .ticket-pill-popover .pill-pop-item {
+      appearance: none;
+      background: transparent;
+      border: 1px solid transparent;
+      text-align: left;
+      padding: 7px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--text-body);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      line-height: 1.3;
+    }
+    .ticket-pill-popover .pill-pop-item:hover { background: #f1f5f9; }
+    .ticket-pill-popover .pill-pop-item.selected {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 500;
+    }
+    .ticket-pill-popover .pill-pop-item .material-symbols-outlined {
+      font-size: 16px;
+      margin-left: auto;
+      color: #1d4ed8;
+    }
+    .ticket-pill-popover .pill-pop-empty {
+      padding: 10px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .ticket-pill-popover input[type="date"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .ticket-pill-popover .pill-pop-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .ticket-pill-popover .pill-pop-btn {
+      appearance: none;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text-body);
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+    }
+    .ticket-pill-popover .pill-pop-btn:hover { background: #f1f5f9; }
+    .ticket-pill-popover .pill-pop-btn.primary {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: white;
+    }
+    .ticket-pill-popover .pill-pop-btn.primary:hover { background: #1d4ed8; }
+
+    .ticket-edit-panel-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.32);
+      z-index: 1090;
+      opacity: 0;
+      transition: opacity 160ms ease;
+    }
+    .ticket-edit-panel-backdrop.open { opacity: 1; }
+    .ticket-edit-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(440px, 100vw);
+      background: var(--card-bg);
+      border-left: 1px solid var(--border);
+      box-shadow: -16px 0 48px rgba(15, 23, 42, 0.12);
+      z-index: 1091;
+      transform: translateX(100%);
+      transition: transform 200ms ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .ticket-edit-panel.open { transform: translateX(0); }
+    .ticket-edit-panel-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ticket-edit-panel-header h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-heading);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ticket-edit-panel-close {
+      appearance: none;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ticket-edit-panel-close:hover { background: #f1f5f9; color: var(--text-body); }
+    .ticket-edit-panel-body {
+      flex: 1;
+      overflow: auto;
+      padding: 16px 20px 24px;
+    }
+    .ticket-edit-row { margin-bottom: 14px; }
+    .ticket-edit-row .ticket-edit-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .ticket-edit-row .ticket-edit-control {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .ticket-edit-row select,
+    .ticket-edit-row input[type="text"],
+    .ticket-edit-row input[type="date"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-family: inherit;
+      background: var(--card-bg);
+      color: var(--text-body);
+    }
+    .ticket-edit-row select:focus,
+    .ticket-edit-row input:focus { outline: none; border-color: #2563eb; }
+    .ticket-edit-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .ticket-edit-chip {
+      appearance: none;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #f4f4f5;
+      color: var(--text-nav);
+      border: 1px solid var(--border);
+    }
+    .ticket-edit-chip.selected {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+      font-weight: 500;
+    }
+    .ticket-edit-chip:hover { background: #f1f5f9; }
+    .ticket-edit-error {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: var(--radius-sm);
+      color: #991b1b;
+      font-size: 12.5px;
+    }
     .ticket-section-title {
       font-size: 11px;
       font-weight: 600;
@@ -691,6 +934,13 @@
       margin: 16px 0 6px;
     }
     .ticket-section-title:first-of-type { margin-top: 0; }
+    .ticket-template-h1 {
+      font-size: 13px;
+      letter-spacing: 0.06em;
+    }
+    .ticket-template-sec-body { white-space: normal; word-break: break-word; }
+    .ticket-markdown-fallback { white-space: pre-wrap; word-break: break-word; }
+    .ticket-template-empty { color: var(--text-muted); font-style: normal; }
     .ticket-section { color: var(--text-body); white-space: pre-wrap; font-size: 14px; }
     .ticket-section ul { margin: 0; padding-left: 20px; }
     .ticket-section li { margin: 4px 0; }
@@ -1908,6 +2158,7 @@
               </div>
 
               <div class="composer-wrap">
+                <p id="ticket-template-banner" class="field-help hidden" style="margin: 0 0 10px 0;"></p>
                 <form class="composer" id="ticket-form" autocomplete="off">
                   <textarea id="ticket-input" rows="1" placeholder="Send a message"></textarea>
                   <div class="composer-row">
@@ -2080,6 +2331,26 @@
                     Paste a Notion page or database link, then press <kbd>Enter</kbd> to add it as a pill.
                     Use <strong>Ingest from Notion</strong> to process every pill in order. Tab does not add a pill.
                   </p>
+                  <div class="notion-template-block" style="margin-top: 14px;">
+                    <label class="field-help" for="ticket-template-url">Ticket page template (optional)</label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; align-items: center;">
+                      <input
+                        type="text"
+                        id="ticket-template-url"
+                        class="notion-pill-input"
+                        style="flex: 1; min-width: 220px"
+                        placeholder="Notion page URL — top-level headings become ticket sections…"
+                        autocomplete="off"
+                      />
+                      <button type="button" id="ticket-template-save" class="action secondary">Save template</button>
+                      <button type="button" id="ticket-template-clear" class="action secondary">Clear</button>
+                    </div>
+                    <p id="ticket-template-status-ingest" class="status-msg" style="margin-top: 8px;"></p>
+                  </div>
+                  <label class="field-help" style="display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; cursor: pointer;">
+                    <input type="checkbox" id="notion-ingest-as-examples" style="margin-top: 2px;" />
+                    <span>Ingest queued items as <strong>ticket examples</strong> (indexed separately for ticket generation).</span>
+                  </label>
                 </div>
 
                 <div class="ingest-card-foot">
@@ -2250,6 +2521,7 @@
           b.classList.toggle("active", b.getAttribute("data-tab") === name);
         });
         if (name === "sources") loadSourcesPanel();
+        if (name === "ticket" || name === "ingest") void refreshTicketTemplateUi();
       }
       document.querySelectorAll(".nav-btn").forEach(function (btn) {
         btn.addEventListener("click", function () {
@@ -2953,6 +3225,71 @@
       const ticketThreadInner = document.getElementById("ticket-thread-inner");
       const ticketWelcome = document.getElementById("ticket-welcome");
       const ticketSuggestions = document.getElementById("ticket-suggestions");
+      const ticketTemplateBanner = document.getElementById("ticket-template-banner");
+
+      async function refreshTicketTemplateUi() {
+        const ticketTemplateStatusIngest = document.getElementById(
+          "ticket-template-status-ingest"
+        );
+        try {
+          const r = await fetch(apiUrl("/ticket/template"));
+          const j = await r.json();
+          const t = j && j.template;
+          var has = !!(t && t.sections && t.sections.length);
+          if (ticketTemplateStatusIngest) {
+            ticketTemplateStatusIngest.classList.remove("error");
+            ticketTemplateStatusIngest.textContent = has
+              ? "Saved: " +
+                t.sections.length +
+                " section(s) from page " +
+                String(t.page_id || "").slice(0, 8) +
+                "…"
+              : "No template saved.";
+          }
+          if (ticketTemplateBanner) {
+            if (!has) {
+              ticketTemplateBanner.classList.add("hidden");
+              ticketTemplateBanner.textContent = "";
+            } else {
+              ticketTemplateBanner.classList.remove("hidden");
+              ticketTemplateBanner.textContent =
+                "Notion body template active (" +
+                t.sections.length +
+                " sections). New tickets use this layout when pushed.";
+            }
+          }
+        } catch (_e) {
+          if (ticketTemplateStatusIngest) {
+            ticketTemplateStatusIngest.classList.add("error");
+            ticketTemplateStatusIngest.textContent =
+              "Could not load template status.";
+          }
+        }
+      }
+
+      var ticketSchema = null;
+      function loadTicketSchema() {
+        return fetch(apiUrl("/ticket/schema"))
+          .then(function (r) {
+            if (!r.ok) throw new Error("schema");
+            return r.json();
+          })
+          .then(function (data) {
+            ticketSchema = data;
+            return data;
+          })
+          .catch(function () {
+            ticketSchema = null;
+            return null;
+          });
+      }
+      (function () {
+        var prevShowTab = showTab;
+        showTab = function (name) {
+          prevShowTab(name);
+          if (name === "ticket") void loadTicketSchema();
+        };
+      })();
 
       let lastTicket = null;
 
@@ -3064,6 +3401,638 @@
         }
       }
 
+      var TICKET_HEADER_PREFERRED_ORDER = [
+        "type",
+        "status",
+        "priority",
+        "current_sprint",
+        "dev_owner",
+        "epic",
+        "epic_timing",
+        "original_sprint",
+        "include_in_email",
+        "email_sent_in",
+        "eng_due_date",
+        "cust_release_date",
+        "estimated_effort",
+        "tags",
+      ];
+      var ticketCardRegistry = new Map();
+      var ticketCardSeq = 0;
+      var activeTicketPopover = null;
+      var activeTicketPanel = null;
+
+      function getTicketPropList() {
+        return ticketSchema && ticketSchema.properties && !ticketSchema.error
+          ? ticketSchema.properties
+          : null;
+      }
+
+      function getTicketProperty(key) {
+        var list = getTicketPropList();
+        if (!list) return null;
+        for (var i = 0; i < list.length; i++) {
+          if (list[i].key === key) return list[i];
+        }
+        return null;
+      }
+
+      function ticketHeaderProps() {
+        var list = getTicketPropList();
+        if (!list) return [];
+        var inline = list.filter(function (p) {
+          return p && p.show_in_header && p.key;
+        });
+        if (!inline.length) return [];
+        function rank(p) {
+          var i = TICKET_HEADER_PREFERRED_ORDER.indexOf(p.key);
+          return i === -1 ? TICKET_HEADER_PREFERRED_ORDER.length : i;
+        }
+        return inline.slice().sort(function (a, b) {
+          var ra = rank(a);
+          var rb = rank(b);
+          if (ra !== rb) return ra - rb;
+          return (a.name || "").localeCompare(b.name || "");
+        });
+      }
+
+      function buildTicketMetaPillsHtml(t, ctx) {
+        var props = ticketHeaderProps();
+        if (props.length) {
+          return props
+            .map(function (p) {
+              return renderEditablePillHtml(t, p, ctx);
+            })
+            .join("");
+        }
+        var priorityClass = "priority-" + escapeHtml((t.priority || "").toLowerCase());
+        var sprintPill = t.current_sprint
+          ? '<span class="meta-pill">Sprint: ' + escapeHtml(t.current_sprint) + "</span>"
+          : "";
+        var ownerPill = t.dev_owner
+          ? '<span class="meta-pill">Owner: ' + escapeHtml(t.dev_owner) + "</span>"
+          : "";
+        return (
+          '<span class="meta-pill">Type: ' + escapeHtml(t.type || "") + '</span>' +
+          '<span class="meta-pill ' + priorityClass + '">Priority: ' + escapeHtml(t.priority || "") + '</span>' +
+          '<span class="meta-pill">Status: ' + escapeHtml(t.status || "") + '</span>' +
+          '<span class="meta-pill">Effort: ' + escapeHtml(t.estimated_effort || "") + '</span>' +
+          sprintPill +
+          ownerPill
+        );
+      }
+
+      function pillDisplayValue(t, prop) {
+        if (!prop || !prop.key) return "";
+        var raw = t[prop.key];
+        if (prop.notion_type === "multi_select" || prop.key === "tags") {
+          if (Array.isArray(raw)) return raw.filter(Boolean).join(", ");
+          return raw == null ? "" : String(raw);
+        }
+        if (raw == null) return "";
+        return String(raw);
+      }
+
+      function renderEditablePillHtml(t, prop, ctx) {
+        var uid = ctx && ctx.uid ? ctx.uid : "";
+        var display = pillDisplayValue(t, prop);
+        var isEmpty = !display;
+        var cls = "meta-pill editable";
+        if (prop.key === "priority") {
+          cls += " priority-" + escapeHtml((t.priority || "").toLowerCase());
+        }
+        if (isEmpty) cls += " is-empty";
+        var label = escapeHtml(prop.name);
+        var valueHtml = isEmpty
+          ? "—"
+          : escapeHtml(display);
+        return (
+          '<span class="' +
+            cls +
+            '" role="button" tabindex="0" data-role="edit-pill" data-key="' +
+            escapeHtml(prop.key) +
+            '" data-uid="' +
+            escapeHtml(uid) +
+            '" aria-label="Change ' +
+            label +
+            '">' +
+            '<span class="meta-pill-label">' + label + ":</span> " +
+            '<span class="meta-pill-value">' + valueHtml + '</span>' +
+            '<span class="meta-pill-chevron" aria-hidden="true">' +
+              '<span class="material-symbols-outlined">expand_more</span>' +
+            '</span>' +
+          '</span>'
+        );
+      }
+
+      function registerTicketCard(container, data) {
+        var uid = container.dataset && container.dataset.tcUid;
+        if (!uid) {
+          uid = "tc_" + (++ticketCardSeq) + "_" + Math.random().toString(36).slice(2, 7);
+          if (container.dataset) container.dataset.tcUid = uid;
+        }
+        ticketCardRegistry.set(uid, { container: container, data: data });
+        return uid;
+      }
+
+      function refreshTicketCard(uid) {
+        var entry = ticketCardRegistry.get(uid);
+        if (!entry) return;
+        renderTicketCard(entry.container, entry.data);
+      }
+
+      function notifyTicketEdited() {
+        try { persistTicket(); } catch (_e) {}
+      }
+
+      function closeTicketPopover() {
+        if (!activeTicketPopover) return;
+        document.removeEventListener("mousedown", popoverOutsideHandler, true);
+        document.removeEventListener("keydown", popoverKeydownHandler, true);
+        window.removeEventListener("resize", popoverRepositionHandler);
+        if (activeTicketPopover.el && activeTicketPopover.el.parentNode) {
+          activeTicketPopover.el.parentNode.removeChild(activeTicketPopover.el);
+        }
+        if (activeTicketPopover.onClose) {
+          try { activeTicketPopover.onClose(); } catch (_e) {}
+        }
+        activeTicketPopover = null;
+      }
+
+      function popoverOutsideHandler(e) {
+        if (!activeTicketPopover) return;
+        var p = activeTicketPopover;
+        if (p.el && p.el.contains(e.target)) return;
+        if (p.anchor && p.anchor.contains && p.anchor.contains(e.target)) return;
+        closeTicketPopover();
+      }
+
+      function popoverKeydownHandler(e) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeTicketPopover();
+        }
+      }
+
+      function popoverRepositionHandler() {
+        if (!activeTicketPopover) return;
+        positionPopover(activeTicketPopover.el, activeTicketPopover.anchor);
+      }
+
+      function positionPopover(pop, anchor) {
+        var rect = anchor.getBoundingClientRect();
+        var popWidth = pop.offsetWidth || 240;
+        var popHeight = pop.offsetHeight || 220;
+        var left = rect.left;
+        var top = rect.bottom + 6;
+        if (left + popWidth > window.innerWidth - 8) {
+          left = Math.max(8, window.innerWidth - popWidth - 8);
+        }
+        if (top + popHeight > window.innerHeight - 8) {
+          var aboveTop = rect.top - popHeight - 6;
+          if (aboveTop >= 8) top = aboveTop;
+          else top = Math.max(8, window.innerHeight - popHeight - 8);
+        }
+        pop.style.left = left + "px";
+        pop.style.top = top + "px";
+      }
+
+      function openTicketPopover(anchor, contentBuilder, options) {
+        closeTicketPopover();
+        var pop = document.createElement("div");
+        pop.className = "ticket-pill-popover";
+        document.body.appendChild(pop);
+        contentBuilder(pop);
+        positionPopover(pop, anchor);
+        activeTicketPopover = {
+          el: pop,
+          anchor: anchor,
+          onClose: options && options.onClose,
+        };
+        setTimeout(function () {
+          document.addEventListener("mousedown", popoverOutsideHandler, true);
+          document.addEventListener("keydown", popoverKeydownHandler, true);
+          window.addEventListener("resize", popoverRepositionHandler);
+          if (options && options.autofocusSelector) {
+            var f = pop.querySelector(options.autofocusSelector);
+            if (f && f.focus) f.focus();
+          }
+        }, 0);
+      }
+
+      function setTicketValue(uid, key, newValue, options) {
+        var entry = ticketCardRegistry.get(uid);
+        if (!entry) return;
+        var ticket = entry.data && entry.data.ticket;
+        if (!ticket) return;
+        ticket[key] = newValue;
+        refreshTicketCard(uid);
+        notifyTicketEdited();
+        if (options && options.openPanelAfter) {
+          openTicketEditPanel(uid);
+        }
+      }
+
+      function buildSelectListHtml(prop, currentValue, options) {
+        var withClear =
+          !options || options.withClear === false ? false : true;
+        var listOpts = (prop.options || []).slice();
+        var html =
+          '<div class="pill-pop-list" role="listbox" aria-label="' +
+          escapeHtml(prop.name) +
+          ' options">';
+        if (withClear) {
+          var clearSelected = !currentValue;
+          html +=
+            '<button type="button" class="pill-pop-item' +
+            (clearSelected ? " selected" : "") +
+            '" data-value="" role="option">' +
+            '<em>Clear</em>' +
+            (clearSelected
+              ? '<span class="material-symbols-outlined" aria-hidden="true">check</span>'
+              : "") +
+            "</button>";
+        }
+        if (!listOpts.length) {
+          html += '<div class="pill-pop-empty">No options available.</div>';
+        } else {
+          listOpts.forEach(function (o) {
+            var selected = String(currentValue || "") === String(o);
+            html +=
+              '<button type="button" class="pill-pop-item' +
+              (selected ? " selected" : "") +
+              '" data-value="' +
+              escapeHtml(o) +
+              '" role="option">' +
+              escapeHtml(o) +
+              (selected
+                ? '<span class="material-symbols-outlined" aria-hidden="true">check</span>'
+                : "") +
+              "</button>";
+          });
+        }
+        html += "</div>";
+        return html;
+      }
+
+      function bindSingleSelectPopover(pop, uid, prop, options) {
+        pop.addEventListener("click", function (e) {
+          var btn = e.target.closest(".pill-pop-item");
+          if (!btn) return;
+          var val = btn.getAttribute("data-value") || "";
+          closeTicketPopover();
+          setTicketValue(uid, prop.key, val);
+          if (options && typeof options.onChoose === "function") {
+            options.onChoose(val);
+          }
+        });
+      }
+
+      function openSelectEditor(anchor, uid, prop) {
+        var entry = ticketCardRegistry.get(uid);
+        if (!entry) return;
+        var current = entry.data.ticket[prop.key];
+        openTicketPopover(anchor, function (pop) {
+          if ((prop.options || []).length > 8) {
+            pop.innerHTML =
+              '<input class="pill-pop-search" type="text" placeholder="Filter options" aria-label="Filter ' +
+              escapeHtml(prop.name) +
+              '" />' +
+              buildSelectListHtml(prop, current);
+            var inp = pop.querySelector(".pill-pop-search");
+            inp.addEventListener("input", function () {
+              var q = inp.value.toLowerCase().trim();
+              pop.querySelectorAll(".pill-pop-item").forEach(function (b) {
+                var label = (b.textContent || "").toLowerCase();
+                b.style.display = !q || label.indexOf(q) !== -1 ? "" : "none";
+              });
+            });
+          } else {
+            pop.innerHTML = buildSelectListHtml(prop, current);
+          }
+          bindSingleSelectPopover(pop, uid, prop);
+        }, { autofocusSelector: ".pill-pop-search" });
+      }
+
+      function openMultiSelectEditor(anchor, uid, prop) {
+        var entry = ticketCardRegistry.get(uid);
+        if (!entry) return;
+        var current = entry.data.ticket[prop.key];
+        if (!Array.isArray(current)) current = [];
+        var working = current.slice();
+        openTicketPopover(anchor, function (pop) {
+          var html =
+            '<div class="pill-pop-list" role="group" aria-label="' +
+            escapeHtml(prop.name) +
+            '">';
+          if (!(prop.options || []).length) {
+            html += '<div class="pill-pop-empty">No options available.</div>';
+          } else {
+            prop.options.forEach(function (o) {
+              var checked = working.indexOf(o) !== -1;
+              html +=
+                '<button type="button" class="pill-pop-item' +
+                (checked ? " selected" : "") +
+                '" data-value="' +
+                escapeHtml(o) +
+                '" role="checkbox" aria-checked="' +
+                (checked ? "true" : "false") +
+                '">' +
+                escapeHtml(o) +
+                (checked
+                  ? '<span class="material-symbols-outlined" aria-hidden="true">check</span>'
+                  : "") +
+                "</button>";
+            });
+          }
+          html +=
+            "</div>" +
+            '<div class="pill-pop-actions">' +
+            '<button type="button" class="pill-pop-btn" data-role="clear">Clear all</button>' +
+            '<button type="button" class="pill-pop-btn primary" data-role="done">Done</button>' +
+            "</div>";
+          pop.innerHTML = html;
+          pop.addEventListener("click", function (e) {
+            var item = e.target.closest(".pill-pop-item");
+            if (item) {
+              var val = item.getAttribute("data-value");
+              var idx = working.indexOf(val);
+              if (idx >= 0) working.splice(idx, 1);
+              else working.push(val);
+              item.classList.toggle("selected");
+              item.setAttribute("aria-checked", idx >= 0 ? "false" : "true");
+              var existingCheck = item.querySelector(".material-symbols-outlined");
+              if (idx >= 0 && existingCheck) {
+                existingCheck.remove();
+              } else if (idx < 0 && !existingCheck) {
+                var checkEl = document.createElement("span");
+                checkEl.className = "material-symbols-outlined";
+                checkEl.setAttribute("aria-hidden", "true");
+                checkEl.textContent = "check";
+                item.appendChild(checkEl);
+              }
+              return;
+            }
+            var done = e.target.closest('[data-role="done"]');
+            if (done) {
+              closeTicketPopover();
+              return;
+            }
+            var clear = e.target.closest('[data-role="clear"]');
+            if (clear) {
+              working = [];
+              pop.querySelectorAll(".pill-pop-item").forEach(function (b) {
+                b.classList.remove("selected");
+                b.setAttribute("aria-checked", "false");
+                var ck = b.querySelector(".material-symbols-outlined");
+                if (ck) ck.remove();
+              });
+            }
+          });
+        }, {
+          onClose: function () {
+            setTicketValue(uid, prop.key, working);
+          },
+        });
+      }
+
+      function openDateEditor(anchor, uid, prop) {
+        var entry = ticketCardRegistry.get(uid);
+        if (!entry) return;
+        var current = entry.data.ticket[prop.key] || "";
+        openTicketPopover(anchor, function (pop) {
+          pop.innerHTML =
+            '<input class="pill-pop-search" type="date" value="' +
+            escapeHtml(current) +
+            '" aria-label="' +
+            escapeHtml(prop.name) +
+            '" />' +
+            '<div class="pill-pop-actions">' +
+            '<button type="button" class="pill-pop-btn" data-role="clear">Clear</button>' +
+            '<button type="button" class="pill-pop-btn primary" data-role="save">Save</button>' +
+            "</div>";
+          var input = pop.querySelector("input[type='date']");
+          input.addEventListener("change", function () {
+            // Save on Save button; no auto-close so user can pick precisely.
+          });
+          pop.addEventListener("click", function (e) {
+            if (e.target.closest('[data-role="save"]')) {
+              closeTicketPopover();
+              setTicketValue(uid, prop.key, input.value || "");
+            } else if (e.target.closest('[data-role="clear"]')) {
+              input.value = "";
+            }
+          });
+        }, { autofocusSelector: "input[type='date']" });
+      }
+
+      function openPeopleEditor(anchor, uid, prop) {
+        var entry = ticketCardRegistry.get(uid);
+        if (!entry) return;
+        var current = entry.data.ticket[prop.key] || "";
+        openTicketPopover(anchor, function (pop) {
+          pop.innerHTML =
+            '<input class="pill-pop-search" type="text" placeholder="Search people" aria-label="Search ' +
+            escapeHtml(prop.name) +
+            '" />' +
+            buildSelectListHtml(prop, current);
+          var inp = pop.querySelector(".pill-pop-search");
+          inp.addEventListener("input", function () {
+            var q = inp.value.toLowerCase().trim();
+            pop.querySelectorAll(".pill-pop-item").forEach(function (b) {
+              var label = (b.textContent || "").toLowerCase();
+              b.style.display = !q || label.indexOf(q) !== -1 ? "" : "none";
+            });
+          });
+          bindSingleSelectPopover(pop, uid, prop);
+        }, { autofocusSelector: ".pill-pop-search" });
+      }
+
+      function openTicketPropertyEditor(pillEl, uid, key) {
+        var prop = getTicketProperty(key);
+        if (!prop) return;
+        var type = prop.notion_type;
+        if (type === "select" || type === "status" || type === "internal" || type === "rich_text") {
+          openSelectEditor(pillEl, uid, prop);
+        } else if (type === "multi_select") {
+          openMultiSelectEditor(pillEl, uid, prop);
+        } else if (type === "date") {
+          openDateEditor(pillEl, uid, prop);
+        } else if (type === "people") {
+          openPeopleEditor(pillEl, uid, prop);
+        } else if (type === "number") {
+          openSelectEditor(pillEl, uid, prop);
+        }
+      }
+
+      function buildEditPanelRowHtml(prop, t) {
+        var current = pillDisplayValue(t, prop);
+        var type = prop.notion_type;
+        var label =
+          '<span class="ticket-edit-label">' +
+          escapeHtml(prop.name) +
+          (type ? " · " + escapeHtml(type) : "") +
+          "</span>";
+        var control = "";
+        if (type === "select" || type === "status" || type === "internal" || type === "people" || type === "rich_text") {
+          var optsHtml = '<option value=""></option>';
+          (prop.options || []).forEach(function (o) {
+            optsHtml +=
+              '<option value="' +
+              escapeHtml(o) +
+              '"' +
+              (String(current) === String(o) ? " selected" : "") +
+              ">" +
+              escapeHtml(o) +
+              "</option>";
+          });
+          control =
+            '<select data-role="panel-select" data-key="' +
+            escapeHtml(prop.key) +
+            '">' +
+            optsHtml +
+            "</select>";
+        } else if (type === "multi_select") {
+          var raw = t[prop.key];
+          var arr = Array.isArray(raw) ? raw : [];
+          var chips = (prop.options || [])
+            .map(function (o) {
+              var selected = arr.indexOf(o) !== -1;
+              return (
+                '<button type="button" class="ticket-edit-chip' +
+                (selected ? " selected" : "") +
+                '" data-role="panel-chip" data-key="' +
+                escapeHtml(prop.key) +
+                '" data-value="' +
+                escapeHtml(o) +
+                '">' +
+                escapeHtml(o) +
+                "</button>"
+              );
+            })
+            .join("");
+          control = '<div class="ticket-edit-chips">' + chips + "</div>";
+        } else if (type === "date") {
+          control =
+            '<input type="date" data-role="panel-date" data-key="' +
+            escapeHtml(prop.key) +
+            '" value="' +
+            escapeHtml(current) +
+            '" />';
+        } else if (type === "number") {
+          control =
+            '<input type="text" data-role="panel-text" data-key="' +
+            escapeHtml(prop.key) +
+            '" value="' +
+            escapeHtml(current) +
+            '" />';
+        } else {
+          control =
+            '<input type="text" data-role="panel-text" data-key="' +
+            escapeHtml(prop.key) +
+            '" value="' +
+            escapeHtml(current) +
+            '" />';
+        }
+        return (
+          '<div class="ticket-edit-row">' +
+          label +
+          '<div class="ticket-edit-control">' +
+          control +
+          "</div>" +
+          "</div>"
+        );
+      }
+
+      function closeTicketEditPanel() {
+        if (!activeTicketPanel) return;
+        var panel = activeTicketPanel.panel;
+        var backdrop = activeTicketPanel.backdrop;
+        document.removeEventListener("keydown", panelKeydownHandler, true);
+        panel.classList.remove("open");
+        backdrop.classList.remove("open");
+        setTimeout(function () {
+          if (panel.parentNode) panel.parentNode.removeChild(panel);
+          if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        }, 220);
+        activeTicketPanel = null;
+      }
+
+      function panelKeydownHandler(e) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeTicketEditPanel();
+        }
+      }
+
+      function openTicketEditPanel(uid) {
+        var entry = ticketCardRegistry.get(uid);
+        if (!entry) return;
+        var props = getTicketPropList();
+        if (!props) return;
+        closeTicketEditPanel();
+        var backdrop = document.createElement("div");
+        backdrop.className = "ticket-edit-panel-backdrop";
+        var panel = document.createElement("div");
+        panel.className = "ticket-edit-panel";
+        var t = entry.data.ticket || {};
+        var rowsHtml = props
+          .filter(function (p) { return p && p.key; })
+          .map(function (p) { return buildEditPanelRowHtml(p, t); })
+          .join("");
+        panel.innerHTML =
+          '<div class="ticket-edit-panel-header">' +
+            '<h3>' + escapeHtml(t.title || "Edit ticket properties") + '</h3>' +
+            '<button type="button" class="ticket-edit-panel-close" aria-label="Close">' +
+              '<span class="material-symbols-outlined" aria-hidden="true">close</span>' +
+            "</button>" +
+          "</div>" +
+          '<div class="ticket-edit-panel-body">' + rowsHtml + "</div>";
+        document.body.appendChild(backdrop);
+        document.body.appendChild(panel);
+        activeTicketPanel = { panel: panel, backdrop: backdrop, uid: uid };
+        requestAnimationFrame(function () {
+          backdrop.classList.add("open");
+          panel.classList.add("open");
+        });
+        document.addEventListener("keydown", panelKeydownHandler, true);
+        backdrop.addEventListener("click", closeTicketEditPanel);
+        panel.querySelector(".ticket-edit-panel-close").addEventListener("click", closeTicketEditPanel);
+
+        panel.addEventListener("change", function (e) {
+          var sel = e.target.closest('[data-role="panel-select"]');
+          if (sel) {
+            setTicketValue(uid, sel.getAttribute("data-key"), sel.value || "");
+            return;
+          }
+          var date = e.target.closest('[data-role="panel-date"]');
+          if (date) {
+            setTicketValue(uid, date.getAttribute("data-key"), date.value || "");
+            return;
+          }
+        });
+        panel.addEventListener("input", function (e) {
+          var txt = e.target.closest('[data-role="panel-text"]');
+          if (txt) {
+            setTicketValue(uid, txt.getAttribute("data-key"), txt.value || "");
+          }
+        });
+        panel.addEventListener("click", function (e) {
+          var chip = e.target.closest('[data-role="panel-chip"]');
+          if (!chip) return;
+          var key = chip.getAttribute("data-key");
+          var value = chip.getAttribute("data-value");
+          var entry2 = ticketCardRegistry.get(uid);
+          if (!entry2) return;
+          var arr = Array.isArray(entry2.data.ticket[key]) ? entry2.data.ticket[key].slice() : [];
+          var idx = arr.indexOf(value);
+          if (idx >= 0) arr.splice(idx, 1);
+          else arr.push(value);
+          chip.classList.toggle("selected");
+          setTicketValue(uid, key, arr);
+        });
+      }
+
       function renderTicketCard(container, data) {
         if (!data) data = {};
         const t = data.ticket || {};
@@ -3079,33 +4048,85 @@
           ? '<ul>' + ac.map(function (item) { return '<li>' + escapeHtml(item) + '</li>'; }).join("") + '</ul>'
           : '<em>(none)</em>';
 
-        const priorityClass = "priority-" + escapeHtml((t.priority || "").toLowerCase());
-        const sprintPill = t.current_sprint
-          ? '<span class="meta-pill">Sprint: ' + escapeHtml(t.current_sprint) + "</span>"
-          : "";
-        const ownerPill = t.dev_owner
-          ? '<span class="meta-pill">Owner: ' + escapeHtml(t.dev_owner) + "</span>"
+        var uid = registerTicketCard(container, data);
+        const metaPillsHtml = buildTicketMetaPillsHtml(t, { uid: uid });
+        const headerProps = ticketHeaderProps();
+        const editAllHtml = headerProps.length
+          ? '<button class="action secondary" data-role="edit-all" type="button">' +
+              '<span class="material-symbols-outlined" aria-hidden="true">tune</span>Edit all properties</button>'
           : "";
 
+        var schemaProps =
+          ticketSchema && ticketSchema.properties && !ticketSchema.error
+            ? ticketSchema.properties
+            : null;
+        var schemaHasTags = !!(
+          schemaProps &&
+          schemaProps.some(function (p) {
+            return p && p.key === "tags";
+          })
+        );
+        var showTagsSection = schemaProps ? schemaHasTags : tags.length > 0;
+        var tagsBlockHtml = showTagsSection
+          ? '<div class="ticket-section-title">Tags</div>' +
+            '<div class="tags-row">' + tagsHtml + '</div>'
+          : "";
+
+        var layout = data.template_layout;
+        var usesTemplateLayout =
+          t.uses_template && Array.isArray(layout) && layout.length > 0;
+
+        var bodySectionsHtml;
+        if (usesTemplateLayout) {
+          bodySectionsHtml = layout
+            .map(function (sec) {
+              var hl = sec.heading_level === 1 ? 1 : 2;
+              var titleCls =
+                "ticket-section-title" +
+                (hl === 1 ? " ticket-template-h1" : "");
+              var head =
+                '<div class="' +
+                titleCls +
+                '">' +
+                escapeHtml(sec.title || "") +
+                "</div>";
+              if (!sec.fillable) return head;
+              var raw = sec.body || "";
+              var bodyInner = raw.trim()
+                ? escapeHtml(raw).replace(/\n/g, "<br>")
+                : '<em class="ticket-template-empty">—</em>';
+              return (
+                head +
+                '<div class="ticket-section ticket-template-sec-body">' +
+                bodyInner +
+                "</div>"
+              );
+            })
+            .join("");
+        } else if (t.uses_template && (data.markdown || "").trim()) {
+          bodySectionsHtml =
+            '<div class="ticket-section-title">Ticket body</div>' +
+            '<div class="ticket-section ticket-markdown-fallback">' +
+            escapeHtml(data.markdown || "") +
+            "</div>";
+        } else {
+          bodySectionsHtml =
+            '<div class="ticket-section-title">Description</div>' +
+            '<div class="ticket-section">' + escapeHtml(t.description || "") + "</div>" +
+            '<div class="ticket-section-title">Acceptance criteria</div>' +
+            '<div class="ticket-section">' + acHtml + "</div>" +
+            '<div class="ticket-section-title">Related context</div>' +
+            '<div class="ticket-section">' + escapeHtml(t.related_context || "") + "</div>";
+        }
+
         container.innerHTML =
-          '<div class="ticket-card">' +
+          '<div class="ticket-card" data-tc-uid="' + escapeHtml(uid) + '">' +
             '<div class="ticket-title">' + escapeHtml(t.title || "Untitled") + '</div>' +
             '<div class="ticket-meta">' +
-              '<span class="meta-pill">Type: ' + escapeHtml(t.type || "") + '</span>' +
-              '<span class="meta-pill ' + priorityClass + '">Priority: ' + escapeHtml(t.priority || "") + '</span>' +
-              '<span class="meta-pill">Status: ' + escapeHtml(t.status || "") + '</span>' +
-              '<span class="meta-pill">Effort: ' + escapeHtml(t.estimated_effort || "") + '</span>' +
-              sprintPill +
-              ownerPill +
-            '</div>' +
-            '<div class="ticket-section-title">Description</div>' +
-            '<div class="ticket-section">' + escapeHtml(t.description || "") + '</div>' +
-            '<div class="ticket-section-title">Acceptance criteria</div>' +
-            '<div class="ticket-section">' + acHtml + '</div>' +
-            '<div class="ticket-section-title">Related context</div>' +
-            '<div class="ticket-section">' + escapeHtml(t.related_context || "") + '</div>' +
-            '<div class="ticket-section-title">Tags</div>' +
-            '<div class="tags-row">' + tagsHtml + '</div>' +
+              metaPillsHtml +
+            "</div>" +
+            bodySectionsHtml +
+            tagsBlockHtml +
             (chipsHtml
               ? '<div class="ticket-section-title">Sources used</div>' +
                 '<div class="source-chips">' + chipsHtml + '</div>'
@@ -3113,12 +4134,14 @@
             '<div class="ticket-actions">' +
               '<button class="action secondary" data-role="copy" type="button">' +
               '<span class="material-symbols-outlined" aria-hidden="true">content_copy</span>Copy as Markdown</button>' +
+              editAllHtml +
               (data.notion_url
                 ? '<a class="notion-link" href="' + escapeHtml(data.notion_url) + '" target="_blank" rel="noopener">Open in Notion ↗</a>'
                 : '<button class="action primary" data-role="push" type="button">' +
                   '<span class="material-symbols-outlined" aria-hidden="true">upload</span>Push to Notion</button>') +
             '</div>' +
           '</div>';
+        container.dataset.tcUid = uid;
 
         const md = (data.markdown || "");
         const copyBtn = container.querySelector('[data-role="copy"]');
@@ -3138,10 +4161,21 @@
             }
           });
         }
+        const editAllBtn = container.querySelector('[data-role="edit-all"]');
+        if (editAllBtn) {
+          editAllBtn.addEventListener("click", function () {
+            openTicketEditPanel(uid);
+          });
+        }
         const pushBtn = container.querySelector('[data-role="push"]');
         if (pushBtn) {
           pushBtn.addEventListener("click", async function () {
             if (!data || !data.ticket) return;
+            var problem = validateTicketBeforePush(data.ticket);
+            if (problem) {
+              setStatus(ticketStatus, problem, "error");
+              return;
+            }
             pushBtn.disabled = true;
             setStatus(ticketStatus, "Pushing to Notion…", "loading");
             try {
@@ -3157,6 +4191,40 @@
             }
           });
         }
+      }
+
+      function validateTicketBeforePush(ticket) {
+        if (!ticket) return "No ticket to push.";
+        if (!(ticket.title && ticket.title.trim())) return "Title is required.";
+        var props = getTicketPropList();
+        if (!props) return "";
+        function findProp(key) {
+          for (var i = 0; i < props.length; i++) {
+            if (props[i].key === key) return props[i];
+          }
+          return null;
+        }
+        var typeProp = findProp("type");
+        if (typeProp && (typeProp.options || []).length) {
+          if (!ticket.type || typeProp.options.indexOf(ticket.type) === -1) {
+            return (
+              typeProp.name +
+              " must be one of: " +
+              typeProp.options.join(", ")
+            );
+          }
+        }
+        var statusProp = findProp("status");
+        if (statusProp && (statusProp.options || []).length) {
+          if (!ticket.status || statusProp.options.indexOf(ticket.status) === -1) {
+            return (
+              statusProp.name +
+              " must be one of: " +
+              statusProp.options.join(", ")
+            );
+          }
+        }
+        return "";
       }
 
       function buildTicketMessageEl(msg) {
@@ -3401,6 +4469,7 @@
             sources: data.sources,
             notion_url: data.notion_url,
             markdown: data.markdown,
+            template_layout: data.template_layout != null ? data.template_layout : null,
           };
           lastTicket = ticketPayload;
           renderTicketCard(pending, ticketPayload);
@@ -3428,6 +4497,29 @@
       });
 
       initTicketChats();
+      void loadTicketSchema();
+
+      ticketThreadInner.addEventListener("click", function (e) {
+        var pill = e.target.closest('[data-role="edit-pill"]');
+        if (!pill) return;
+        var key = pill.getAttribute("data-key");
+        var card = pill.closest(".ticket-card");
+        var uid = card && card.dataset && card.dataset.tcUid;
+        if (!uid || !key) return;
+        e.stopPropagation();
+        openTicketPropertyEditor(pill, uid, key);
+      });
+      ticketThreadInner.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        var pill = e.target.closest('[data-role="edit-pill"]');
+        if (!pill) return;
+        e.preventDefault();
+        var key = pill.getAttribute("data-key");
+        var card = pill.closest(".ticket-card");
+        var uid = card && card.dataset && card.dataset.tcUid;
+        if (!uid || !key) return;
+        openTicketPropertyEditor(pill, uid, key);
+      });
 
       // ---------- Ingest tab ----------
       function formatBytes(n) {
@@ -3803,10 +4895,21 @@
             pill.etaText = "";
             var t0 = Date.now();
             renderNotionPills();
+            var exCh = document.getElementById("notion-ingest-as-examples");
+            var srcSt =
+              exCh && exCh.checked ? "notion_ticket_example" : "notion";
             var body =
               pill.kind === "database"
-                ? { page_ids: [], database_ids: [pill.id] }
-                : { page_ids: [pill.id], database_ids: [] };
+                ? {
+                    page_ids: [],
+                    database_ids: [pill.id],
+                    source_type: srcSt,
+                  }
+                : {
+                    page_ids: [pill.id],
+                    database_ids: [],
+                    source_type: srcSt,
+                  };
             try {
               await streamNotionIngest(body, function (ev) {
                 if (ev.type === "progress") {
@@ -3940,6 +5043,66 @@
           updateNotionSubmitDisabled();
         });
       }
+
+      var ticketTemplateUrl = document.getElementById("ticket-template-url");
+      var ticketTemplateSave = document.getElementById("ticket-template-save");
+      var ticketTemplateClear = document.getElementById("ticket-template-clear");
+      if (ticketTemplateSave && ticketTemplateUrl) {
+        ticketTemplateSave.addEventListener("click", async function () {
+          var raw = ticketTemplateUrl.value.trim();
+          var ticketTemplateStatusIngest = document.getElementById(
+            "ticket-template-status-ingest"
+          );
+          if (!raw) {
+            if (ticketTemplateStatusIngest) {
+              ticketTemplateStatusIngest.classList.add("error");
+              ticketTemplateStatusIngest.textContent = "Paste a Notion page URL first.";
+            }
+            return;
+          }
+          if (ticketTemplateStatusIngest) {
+            ticketTemplateStatusIngest.classList.remove("error");
+            ticketTemplateStatusIngest.textContent = "Saving…";
+          }
+          try {
+            const res = await fetch(apiUrl("/ticket/template"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ page_url: raw }),
+            });
+            const text = await res.text();
+            var data;
+            try {
+              data = text ? JSON.parse(text) : {};
+            } catch (_e) {
+              data = { detail: text };
+            }
+            if (!res.ok) {
+              var det = data.detail != null ? data.detail : text;
+              var msg =
+                typeof det === "string" ? det : JSON.stringify(det);
+              throw new Error(msg || "Request failed");
+            }
+            ticketTemplateUrl.value = "";
+            await refreshTicketTemplateUi();
+            if (ticketTemplateStatusIngest)
+              ticketTemplateStatusIngest.textContent = "Template saved.";
+          } catch (err) {
+            if (ticketTemplateStatusIngest) {
+              ticketTemplateStatusIngest.classList.add("error");
+              ticketTemplateStatusIngest.textContent = err.message || String(err);
+            }
+          }
+        });
+      }
+      if (ticketTemplateClear) {
+        ticketTemplateClear.addEventListener("click", function () {
+          fetch(apiUrl("/ticket/template"), { method: "DELETE" }).then(function () {
+            void refreshTicketTemplateUi();
+          });
+        });
+      }
+      void refreshTicketTemplateUi();
 
       function setupFilePicker(kind, accepts) {
         const input = document.getElementById(kind + "-files");

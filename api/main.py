@@ -4,11 +4,13 @@ Endpoints:
     - ``GET  /health``  → ``{"status": "ok"}``
     - ``POST /qa``      → ``{answer, sources, retrieval_meta}`` (``routing``, ``messages``, …)
     - ``POST /ticket``  → ``{ticket, sources, notion_url}``
+    - ``GET  /ticket/schema`` → Notion ticket DB properties + select/status options
+    - ``GET/POST/PATCH/DELETE /ticket/template`` → optional Notion page body layout (headings)
     - ``POST /ingest/local`` (multipart) → upload + ingest PDF/DOCX/TXT/MD
     - ``POST /ingest/transcripts`` (multipart) → upload + ingest .txt transcripts
     - ``POST /ingest/discord`` (multipart) → upload + ingest DiscordChatExporter JSON
-    - ``POST /ingest/notion`` → ingest Notion pages / databases by ID (batch)
-    - ``POST /ingest/notion/stream`` → same IDs with Server-Sent Events progress (one ID per request)
+- ``POST /ingest/notion`` → ingest Notion pages / databases (optional ``source_type``)
+- ``POST /ingest/notion/stream`` → SSE progress (optional ``source_type``)
     - ``GET  /sources``  → Pinecone metadata rollup by ``source_type`` / file
     - ``GET  /sources/export`` → merged chunk text for one source (Markdown download)
     - ``DELETE /sources`` → remove all vectors for one ``source_type`` + ``file_name``
@@ -28,7 +30,7 @@ import os
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, AsyncIterator, List, Literal, Optional
+from typing import Any, AsyncIterator, Dict, List, Literal, Optional
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -53,16 +55,28 @@ from core.source_inventory import (
     delete_source_vectors,
     source_export_attachment_filename,
 )
+from core.notion_ticket_template import (
+    clear_template as clear_ticket_template,
+    load_template as load_ticket_template,
+    patch_template_section_fillable,
+    set_template_from_page_url,
+)
 from core.ticket_chain import (
     Ticket,
     TicketChain,
     TicketContext,
     TicketGeneration,
+    get_ticket_notion_schema,
     push_ticket_to_notion,
 )
 from ingest.ingest_discord import ingest_discord
 from ingest.ingest_local import LOCAL_FILE_EXTENSIONS, ingest_local
-from ingest.ingest_notion import ingest_notion, iter_ingest_notion_events
+from ingest.ingest_notion import (
+    SOURCE_TYPE_NOTION,
+    SOURCE_TYPE_NOTION_TICKET_EXAMPLE,
+    ingest_notion,
+    iter_ingest_notion_events,
+)
 from ingest.ingest_transcripts import ingest_transcripts
 
 logger = logging.getLogger("company_rag")
@@ -256,6 +270,53 @@ class TicketModel(BaseModel):
     tags: List[str] = Field(default_factory=list)
     current_sprint: str = ""
     dev_owner: str = ""
+    epic: str = ""
+    epic_timing: str = ""
+    original_sprint: str = ""
+    include_in_email: str = ""
+    email_sent_in: str = ""
+    eng_due_date: str = ""
+    cust_release_date: str = ""
+    uses_template: bool = False
+    template_sections: Dict[str, str] = Field(default_factory=dict)
+
+
+class TicketTemplateSetRequest(BaseModel):
+    """Body for ``POST /ticket/template`` — Notion page URL whose headings define sections."""
+
+    page_url: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("page_url")
+    @classmethod
+    def _strip_url(cls, v: str) -> str:
+        t = v.strip()
+        if not t:
+            raise ValueError("page_url must be non-empty")
+        return t
+
+
+class TicketTemplateSectionPatch(BaseModel):
+    """Body for ``PATCH /ticket/template`` — toggle whether the model may fill a section."""
+
+    index: int = Field(ge=0, le=256)
+    fillable: bool
+
+
+class TicketPropertySchemaModel(BaseModel):
+    """One Notion column surfaced to the ticket UI and generator."""
+
+    name: str
+    notion_type: str
+    options: List[str] = Field(default_factory=list)
+    key: str = ""
+    show_in_header: bool = False
+
+
+class TicketSchemaResponse(BaseModel):
+    format: str = "classic"
+    database_title: str = ""
+    properties: List[TicketPropertySchemaModel] = Field(default_factory=list)
+    error: Optional[str] = None
 
 
 class TicketSourceModel(BaseModel):
@@ -266,11 +327,22 @@ class TicketSourceModel(BaseModel):
     preview: str
 
 
+class TicketTemplateLayoutSectionModel(BaseModel):
+    """One heading row from the active Notion template plus optional model-filled body."""
+
+    index: int
+    title: str = ""
+    heading_level: int = 2
+    fillable: bool = True
+    body: str = ""
+
+
 class TicketResponse(BaseModel):
     ticket: TicketModel
     sources: List[TicketSourceModel]
     notion_url: Optional[str] = None
     markdown: str
+    template_layout: Optional[List[TicketTemplateLayoutSectionModel]] = None
 
 
 class SourceRowModel(BaseModel):
@@ -353,12 +425,41 @@ def _ticket_sources_to_models(sources: List[TicketContext]) -> List[TicketSource
     return [TicketSourceModel(**s.to_dict()) for s in sources]
 
 
+def _ticket_template_layout_for_response(
+    ticket: Ticket,
+) -> Optional[List[TicketTemplateLayoutSectionModel]]:
+    if not ticket.uses_template:
+        return None
+    tmpl = load_ticket_template()
+    if not tmpl or not tmpl.get("sections"):
+        return None
+    tsect = ticket.template_sections or {}
+    out: List[TicketTemplateLayoutSectionModel] = []
+    for sec in tmpl.get("sections") or []:
+        if not isinstance(sec, dict):
+            continue
+        idx = str(sec.get("index", ""))
+        fillable = bool(sec.get("fillable"))
+        body = str(tsect.get(idx) or "") if fillable else ""
+        out.append(
+            TicketTemplateLayoutSectionModel(
+                index=int(sec.get("index", 0)),
+                title=str(sec.get("title") or ""),
+                heading_level=int(sec.get("heading_level") or 2),
+                fillable=fillable,
+                body=body,
+            )
+        )
+    return out or None
+
+
 def _ticket_generation_to_response(gen: TicketGeneration) -> TicketResponse:
     return TicketResponse(
         ticket=_ticket_to_model(gen.ticket),
         sources=_ticket_sources_to_models(gen.sources),
         notion_url=gen.notion_url,
         markdown=gen.ticket.to_markdown(),
+        template_layout=_ticket_template_layout_for_response(gen.ticket),
     )
 
 
@@ -509,6 +610,22 @@ async def qa(req: QARequest) -> QAResponse:
         ) from exc
 
 
+@app.get("/ticket/schema", response_model=TicketSchemaResponse)
+async def ticket_schema() -> TicketSchemaResponse:
+    """Return Notion ticket database property names and select/status options."""
+    raw = get_ticket_notion_schema()
+    props = [
+        TicketPropertySchemaModel.model_validate(p)
+        for p in (raw.get("properties") or [])
+    ]
+    return TicketSchemaResponse(
+        format=str(raw.get("format") or "classic"),
+        database_title=str(raw.get("database_title") or ""),
+        properties=props,
+        error=raw.get("error"),
+    )
+
+
 @app.post("/ticket", response_model=TicketResponse)
 async def ticket(req: TicketRequest) -> TicketResponse:
     """Generate a structured Notion ticket from a free-form description.
@@ -534,6 +651,50 @@ async def ticket(req: TicketRequest) -> TicketResponse:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Ticket generation error: {exc}",
+        ) from exc
+
+
+@app.get("/ticket/template")
+async def ticket_template_get() -> dict[str, Any]:
+    """Return the persisted ticket body template (Notion headings), or ``template``: null."""
+    tmpl = load_ticket_template()
+    return {"template": tmpl}
+
+
+@app.post("/ticket/template")
+async def ticket_template_post(req: TicketTemplateSetRequest) -> dict[str, Any]:
+    """Fetch top-level ``heading_1`` / ``heading_2`` blocks and save section order."""
+    try:
+        return set_template_from_page_url(req.page_url)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    except Exception as exc:
+        logger.exception("Ticket template fetch failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Notion template error: {exc}",
+        ) from exc
+
+
+@app.delete("/ticket/template")
+async def ticket_template_delete() -> dict[str, str]:
+    """Clear the saved template."""
+    clear_ticket_template()
+    return {"status": "ok"}
+
+
+@app.patch("/ticket/template")
+async def ticket_template_patch(
+    req: TicketTemplateSectionPatch,
+) -> dict[str, Any]:
+    """Toggle ``fillable`` for one section index."""
+    try:
+        return patch_template_section_fillable(req.index, req.fillable)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
 
 
@@ -567,6 +728,15 @@ async def push_ticket(req: PushRequest) -> PushResponse:
             tags=list(req.ticket.tags),
             current_sprint=req.ticket.current_sprint or "",
             dev_owner=req.ticket.dev_owner or "",
+            epic=req.ticket.epic or "",
+            epic_timing=req.ticket.epic_timing or "",
+            original_sprint=req.ticket.original_sprint or "",
+            include_in_email=req.ticket.include_in_email or "",
+            email_sent_in=req.ticket.email_sent_in or "",
+            eng_due_date=req.ticket.eng_due_date or "",
+            cust_release_date=req.ticket.cust_release_date or "",
+            uses_template=bool(req.ticket.uses_template),
+            template_sections=dict(req.ticket.template_sections or {}),
         )
         url = push_ticket_to_notion(ticket_obj)
         return PushResponse(notion_url=url)
@@ -599,16 +769,24 @@ class IngestResponse(BaseModel):
 
 
 class NotionIngestRequest(BaseModel):
-    """Request body for ``POST /ingest/notion``."""
+    """Request body for ``POST /ingest/notion`` and streaming ingest."""
 
     page_ids: List[str] = Field(default_factory=list)
     database_ids: List[str] = Field(default_factory=list)
+    source_type: Literal["notion", "notion_ticket_example"] = "notion"
 
     @field_validator("page_ids", "database_ids")
     @classmethod
     def _strip_ids(cls, value: List[str]) -> List[str]:
         cleaned = [v.strip() for v in value if isinstance(v, str) and v.strip()]
         return cleaned
+
+
+def _notion_ingest_metadata_source(req: NotionIngestRequest) -> str:
+    """Map API ``source_type`` to Pinecone ``source_type`` metadata."""
+    if req.source_type == "notion_ticket_example":
+        return SOURCE_TYPE_NOTION_TICKET_EXAMPLE
+    return SOURCE_TYPE_NOTION
 
 
 def _save_uploads_to_dir(
@@ -824,6 +1002,7 @@ async def ingest_notion_stream(req: NotionIngestRequest) -> StreamingResponse:
             for ev in iter_ingest_notion_events(
                 page_ids=pages if pages else None,
                 database_ids=dbs if dbs else None,
+                source_type=_notion_ingest_metadata_source(req),
             ):
                 yield f"data: {json.dumps(ev)}\n\n"
         except Exception as exc:
@@ -854,6 +1033,7 @@ async def ingest_notion_endpoint(req: NotionIngestRequest) -> IngestResponse:
         n_pages, n_chunks = ingest_notion(
             page_ids=req.page_ids or None,
             database_ids=req.database_ids or None,
+            source_type=_notion_ingest_metadata_source(req),
         )
     except ValueError as exc:
         raise HTTPException(

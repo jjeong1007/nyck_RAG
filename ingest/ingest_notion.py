@@ -42,6 +42,7 @@ NOTION_CHUNK_SIZE: int = 800
 NOTION_CHUNK_OVERLAP: int = 100
 
 SOURCE_TYPE_NOTION: str = "notion"
+SOURCE_TYPE_NOTION_TICKET_EXAMPLE: str = "notion_ticket_example"
 
 
 def _resolve_notion_token() -> str:
@@ -112,12 +113,14 @@ def fetch_page_title_and_date(token: str, page_id: str) -> Tuple[str, str]:
     return (safe_title, date_str)
 
 
-def _normalize_notion_nodes(nodes: Sequence[BaseNode]) -> None:
+def _normalize_notion_nodes(
+    nodes: Sequence[BaseNode], *, source_type: str = SOURCE_TYPE_NOTION
+) -> None:
     """Force flat metadata keys required by the RAG stack."""
     for node in nodes:
         meta = dict(node.metadata)
         node.metadata = {
-            METADATA_SOURCE_TYPE: SOURCE_TYPE_NOTION,
+            METADATA_SOURCE_TYPE: source_type,
             METADATA_FILE_NAME: str(meta.get(METADATA_FILE_NAME, "notion")),
             METADATA_DATE: str(meta.get(METADATA_DATE, "")),
         }
@@ -191,6 +194,7 @@ def iter_ingest_notion_events(
     *,
     page_ids: Optional[List[str]] = None,
     database_ids: Optional[List[str]] = None,
+    source_type: str = SOURCE_TYPE_NOTION,
 ) -> Iterator[Dict[str, Any]]:
     """Run Notion ingestion and yield progress events for streaming APIs.
 
@@ -213,6 +217,14 @@ def iter_ingest_notion_events(
     load_dotenv(dotenv_path=get_repo_root() / ".env", override=False)
     page_ids = list(page_ids or [])
     database_ids = list(database_ids or [])
+    st = (source_type or SOURCE_TYPE_NOTION).strip()
+    if st not in (SOURCE_TYPE_NOTION, SOURCE_TYPE_NOTION_TICKET_EXAMPLE):
+        yield {
+            "type": "error",
+            "message": f"Invalid source_type {st!r}; expected notion or "
+            f"{SOURCE_TYPE_NOTION_TICKET_EXAMPLE!r}.",
+        }
+        return
     if not page_ids and not database_ids:
         yield {"type": "error", "message": "Provide at least one page ID or database ID."}
         return
@@ -280,7 +292,7 @@ def iter_ingest_notion_events(
     yield {"type": "progress", "phase": "chunk", "percent": 68, "label": "Chunking…"}
 
     nodes = chunk_notion_documents(docs)
-    _normalize_notion_nodes(nodes)
+    _normalize_notion_nodes(nodes, source_type=st)
 
     yield {
         "type": "progress",
@@ -304,6 +316,7 @@ def ingest_notion(
     *,
     page_ids: Optional[List[str]] = None,
     database_ids: Optional[List[str]] = None,
+    source_type: str = SOURCE_TYPE_NOTION,
 ) -> Tuple[int, int]:
     """Load Notion content, chunk, embed, and upsert into Pinecone.
 
@@ -322,6 +335,7 @@ def ingest_notion(
     for ev in iter_ingest_notion_events(
         page_ids=page_ids,
         database_ids=database_ids,
+        source_type=source_type,
     ):
         if ev["type"] == "complete":
             pages = int(ev.get("pages") or 0)

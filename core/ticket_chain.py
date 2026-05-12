@@ -21,6 +21,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
@@ -39,14 +42,27 @@ from core.retriever import (
     build_vector_index_retriever,
     ensure_env_loaded,
 )
+from core.notion_ticket_template import (
+    build_notion_children_from_template,
+    load_template,
+    ticket_template_prompt_suffix,
+)
+from ingest.ingest_notion import SOURCE_TYPE_NOTION_TICKET_EXAMPLE
+from llama_index.core.vector_stores.types import (
+    FilterOperator,
+    MetadataFilter,
+    MetadataFilters,
+)
 
 # ----- Constants -------------------------------------------------------------
 
+
 CLAUDE_HAIKU_MODEL: str = "claude-haiku-4-5-20251001"
 CLAUDE_TEMPERATURE: float = 0.2
-CLAUDE_MAX_TOKENS: int = 1024
+CLAUDE_MAX_TOKENS: int = 2048
 
 TICKET_TOP_K: int = 6
+TICKET_EXAMPLE_TOP_K: int = 3
 CONTEXT_PREVIEW_CHARS: int = 800
 
 ENV_ANTHROPIC_API_KEY: str = "ANTHROPIC_API_KEY"
@@ -197,6 +213,10 @@ _UUID_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Cached Notion ticket data-source schema (properties + select/status options).
+_SCHEMA_CACHE: Optional[Tuple[float, dict[str, Any]]] = None
+SCHEMA_CACHE_TTL_SEC: float = 300.0
+
 
 # ----- Public types ----------------------------------------------------------
 
@@ -236,6 +256,15 @@ class Ticket:
     tags: List[str] = field(default_factory=list)
     current_sprint: str = ""
     dev_owner: str = ""
+    epic: str = ""
+    epic_timing: str = ""
+    original_sprint: str = ""
+    include_in_email: str = ""
+    email_sent_in: str = ""
+    eng_due_date: str = ""
+    cust_release_date: str = ""
+    uses_template: bool = False
+    template_sections: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -250,22 +279,97 @@ class Ticket:
             "tags": list(self.tags),
             "current_sprint": self.current_sprint,
             "dev_owner": self.dev_owner,
+            "epic": self.epic,
+            "epic_timing": self.epic_timing,
+            "original_sprint": self.original_sprint,
+            "include_in_email": self.include_in_email,
+            "email_sent_in": self.email_sent_in,
+            "eng_due_date": self.eng_due_date,
+            "cust_release_date": self.cust_release_date,
+            "uses_template": self.uses_template,
+            "template_sections": dict(self.template_sections),
         }
 
     def to_markdown(self) -> str:
         """Render the ticket as Markdown for copy/paste in Linear, Slack, etc."""
+        tmpl = load_template()
+        if self.uses_template and tmpl and tmpl.get("sections"):
+            meta_bits_tpl: List[str] = [
+                f"**Category / type:** {self.type}",
+                f"**Priority:** {self.priority}",
+                f"**Status:** {self.status}",
+                f"**Effort:** {self.estimated_effort}",
+            ]
+            if self.current_sprint.strip():
+                meta_bits_tpl.append(f"**Current sprint:** {self.current_sprint}")
+            if self.original_sprint.strip():
+                meta_bits_tpl.append(f"**Original sprint:** {self.original_sprint}")
+            if self.epic.strip():
+                meta_bits_tpl.append(f"**Epic:** {self.epic}")
+            if self.epic_timing.strip():
+                meta_bits_tpl.append(f"**Epic timing:** {self.epic_timing}")
+            if self.dev_owner.strip():
+                meta_bits_tpl.append(f"**Dev owner:** {self.dev_owner}")
+            if self.include_in_email.strip():
+                meta_bits_tpl.append(f"**Include in email:** {self.include_in_email}")
+            if self.email_sent_in.strip():
+                meta_bits_tpl.append(f"**Email sent:** {self.email_sent_in}")
+            if self.eng_due_date.strip():
+                meta_bits_tpl.append(f"**Eng. due:** {self.eng_due_date}")
+            if self.cust_release_date.strip():
+                meta_bits_tpl.append(f"**Cust. release:** {self.cust_release_date}")
+            meta_line_tpl = "  \n".join(meta_bits_tpl)
+            body_parts: List[str] = [
+                f"# {self.title}\n\n",
+                f"{meta_line_tpl}\n\n",
+            ]
+            for sec in tmpl.get("sections") or []:
+                if not isinstance(sec, dict):
+                    continue
+                title = str(sec.get("title") or "").strip()
+                idx = str(sec.get("index", ""))
+                level = int(sec.get("heading_level") or 2)
+                prefix = "##" if level == 2 else "#"
+                body_parts.append(f"{prefix} {title}\n\n")
+                if sec.get("fillable"):
+                    content = (self.template_sections.get(idx) or "").strip()
+                    body_parts.append((content or "_—_") + "\n\n")
+            tags_tpl = ", ".join(self.tags) if self.tags else "_none_"
+            body_parts.append(
+                f"**Related context:** {self.related_context}\n\n"
+                f"**Tags:** {tags_tpl}\n"
+            )
+            return "".join(body_parts)
         bullets = "\n".join(f"- {c}" for c in self.acceptance_criteria) or "- _none_"
         tags = ", ".join(self.tags) if self.tags else "_none_"
-        extra = ""
+        meta_bits: List[str] = [
+            f"**Category / type:** {self.type}",
+            f"**Priority:** {self.priority}",
+            f"**Status:** {self.status}",
+            f"**Effort:** {self.estimated_effort}",
+        ]
         if self.current_sprint.strip():
-            extra += f"\n**Current sprint:** {self.current_sprint}\n"
+            meta_bits.append(f"**Current sprint:** {self.current_sprint}")
+        if self.original_sprint.strip():
+            meta_bits.append(f"**Original sprint:** {self.original_sprint}")
+        if self.epic.strip():
+            meta_bits.append(f"**Epic:** {self.epic}")
+        if self.epic_timing.strip():
+            meta_bits.append(f"**Epic timing:** {self.epic_timing}")
         if self.dev_owner.strip():
-            extra += f"**Dev owner:** {self.dev_owner}\n"
+            meta_bits.append(f"**Dev owner:** {self.dev_owner}")
+        if self.include_in_email.strip():
+            meta_bits.append(f"**Include in email:** {self.include_in_email}")
+        if self.email_sent_in.strip():
+            meta_bits.append(f"**Email sent:** {self.email_sent_in}")
+        if self.eng_due_date.strip():
+            meta_bits.append(f"**Eng. due:** {self.eng_due_date}")
+        if self.cust_release_date.strip():
+            meta_bits.append(f"**Cust. release:** {self.cust_release_date}")
+        meta_line = "  \n".join(meta_bits)
         return (
             f"# {self.title}\n\n"
-            f"**Type:** {self.type}  •  **Priority:** {self.priority}  •  "
-            f"**Status:** {self.status}  •  **Effort:** {self.estimated_effort}\n"
-            f"{extra}\n"
+            f"{meta_line}\n\n"
             f"{self.description}\n\n"
             f"## Acceptance Criteria\n{bullets}\n\n"
             f"**Related context:** {self.related_context}\n\n"
@@ -326,7 +430,480 @@ def _coerce_enum(value: Any, allowed: Iterable[str], *, fallback: str) -> str:
     return fallback
 
 
-def parse_ticket_json(raw: str) -> Ticket:
+def _match_notion_option(
+    value: Any, options: Sequence[str], *, fallback: str
+) -> str:
+    """Pick the first Notion option that matches ``value`` (case / fuzzy)."""
+    raw = _coerce_str(value)
+    if not raw:
+        return fallback
+    opts = [o for o in options if isinstance(o, str) and o.strip()]
+    if not opts:
+        return raw if raw else fallback
+    if raw in opts:
+        return raw
+    rl = raw.casefold()
+    for o in opts:
+        if o.casefold() == rl:
+            return o
+    for o in opts:
+        ol = o.casefold()
+        if rl in ol or ol in rl:
+            return o
+    return fallback
+
+
+def _roadmap_column_ticket_key(column_name: str) -> Optional[str]:
+    """Map a Notion roadmap column label to a :class:`Ticket` field name."""
+    pairs: List[Tuple[str, Optional[str]]] = [
+        (
+            _notion_prop_column(ENV_ROADMAP_PROP_CATEGORY, ROADMAP_DEFAULT_CATEGORY),
+            "type",
+        ),
+        (
+            _notion_prop_column(
+                ENV_ROADMAP_PROP_OVR_STATUS, ROADMAP_DEFAULT_OVR_STATUS
+            ),
+            "status",
+        ),
+        (
+            _notion_prop_column(ENV_ROADMAP_PROP_PRIO, ROADMAP_DEFAULT_PRIO),
+            None,
+        ),
+        (
+            _notion_prop_column(
+                ENV_ROADMAP_PROP_CURRENT_SPRINT, ROADMAP_DEFAULT_CURRENT_SPRINT
+            ),
+            "current_sprint",
+        ),
+        (
+            _notion_prop_column(
+                ENV_ROADMAP_PROP_ORIGINAL_SPRINT, ROADMAP_DEFAULT_ORIGINAL_SPRINT
+            ),
+            "original_sprint",
+        ),
+        (
+            _notion_prop_column(ENV_ROADMAP_PROP_EPIC, ROADMAP_DEFAULT_EPIC),
+            "epic",
+        ),
+        (
+            _notion_prop_column(
+                ENV_ROADMAP_PROP_EPIC_TIMING, ROADMAP_DEFAULT_EPIC_TIMING
+            ),
+            "epic_timing",
+        ),
+        (
+            _notion_prop_column(
+                ENV_ROADMAP_PROP_INCLUDE_EMAIL, ROADMAP_DEFAULT_INCLUDE_EMAIL
+            ),
+            "include_in_email",
+        ),
+        (
+            _notion_prop_column(
+                ENV_ROADMAP_PROP_EMAIL_SENT, ROADMAP_DEFAULT_EMAIL_SENT
+            ),
+            "email_sent_in",
+        ),
+        (
+            _notion_prop_column(ENV_ROADMAP_PROP_ENG_DUE, ROADMAP_DEFAULT_ENG_DUE),
+            "eng_due_date",
+        ),
+        (
+            _notion_prop_column(
+                ENV_ROADMAP_PROP_CUST_RELEASE, ROADMAP_DEFAULT_CUST_RELEASE
+            ),
+            "cust_release_date",
+        ),
+        (
+            _notion_prop_column(
+                ENV_ROADMAP_PROP_DEV_OWNER, ROADMAP_DEFAULT_DEV_OWNER
+            ),
+            "dev_owner",
+        ),
+    ]
+    needle = column_name.strip().casefold()
+    for col, key in pairs:
+        if col.strip().casefold() == needle:
+            return key
+    return None
+
+
+def _classic_column_ticket_key(column_name: str) -> Optional[str]:
+    """Map a classic-schema column to a ticket field."""
+    pairs: List[Tuple[str, str]] = [
+        (_notion_prop_column(ENV_NOTION_PROP_NAME, PROP_NAME), "title"),
+        (_notion_prop_column(ENV_NOTION_PROP_TYPE, PROP_TYPE), "type"),
+        (_notion_prop_column(ENV_NOTION_PROP_PRIORITY, PROP_PRIORITY), "priority"),
+        (_notion_prop_column(ENV_NOTION_PROP_STATUS, PROP_STATUS), "status"),
+        (_notion_prop_column(ENV_NOTION_PROP_EFFORT, PROP_EFFORT), "estimated_effort"),
+        (_notion_prop_column(ENV_NOTION_PROP_TAGS, PROP_TAGS), "tags"),
+    ]
+    needle = column_name.strip().casefold()
+    for col, key in pairs:
+        if col.strip().casefold() == needle:
+            return key if key != "title" else None
+    return None
+
+
+def _people_option_labels_from_env() -> List[str]:
+    """Distinct people labels for the Dev Owner pill, sourced from ``NOTION_ROADMAP_PEOPLE_MAP``.
+
+    Each Notion user id appears once. When multiple keys map to the same id,
+    we prefer the longest label (full name) and fall back to the shortest.
+    """
+    raw = (os.getenv(ENV_ROADMAP_PEOPLE_MAP) or "").strip()
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, dict):
+        return []
+    def _label_rank(label: str) -> tuple[int, int]:
+        clean = label.strip()
+        upper_count = sum(1 for c in clean if c.isupper())
+        return (len(clean), upper_count)
+
+    by_uid: dict[str, str] = {}
+    for label, uid in data.items():
+        if not isinstance(label, str) or not isinstance(uid, str):
+            continue
+        if not label.strip() or not uid.strip():
+            continue
+        current = by_uid.get(uid)
+        if current is None or _label_rank(label) > _label_rank(current):
+            by_uid[uid] = label.strip()
+    return sorted(by_uid.values(), key=str.casefold)
+
+
+def _property_options_list(meta: dict[str, Any], notion_type: str) -> List[str]:
+    if notion_type == "select":
+        return [
+            o.get("name")
+            for o in (meta.get("select") or {}).get("options", [])
+            if o.get("name")
+        ]
+    if notion_type == "status":
+        return [
+            o.get("name")
+            for o in (meta.get("status") or {}).get("options", [])
+            if o.get("name")
+        ]
+    if notion_type == "multi_select":
+        return [
+            o.get("name")
+            for o in (meta.get("multi_select") or {}).get("options", [])
+            if o.get("name")
+        ]
+    return []
+
+
+def _notion_rest_get(token: str, path: str) -> dict[str, Any]:
+    """Authenticated GET against the Notion REST API (no SDK)."""
+    url = "https://api.notion.com" + path
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Notion-Version": NOTION_API_VERSION,
+            "Accept": "application/json",
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            body = resp.read()
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise ValueError(f"Notion GET {path} → {exc.code}: {detail[:240]}") from exc
+    except urllib.error.URLError as exc:
+        raise ValueError(f"Notion GET {path} failed: {exc.reason}") from exc
+    try:
+        return json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Notion GET {path} returned non-JSON body.") from exc
+
+
+def _data_source_id_for_schema(token: str, database_id: str) -> str:
+    env_ds = (os.getenv(ENV_NOTION_TICKET_DATA_SOURCE_ID) or "").strip()
+    if env_ds:
+        return env_ds
+    db_obj = _notion_rest_get(token, f"/v1/databases/{database_id}")
+    sources: List[dict[str, Any]] = db_obj.get("data_sources") or []
+    if len(sources) == 1:
+        sid = sources[0].get("id")
+        if isinstance(sid, str) and sid:
+            return sid
+    raise ValueError(
+        "Ticket database has no single data source; set NOTION_TICKET_DATA_SOURCE_ID."
+    )
+
+
+def _fetch_ticket_notion_schema_uncached() -> dict[str, Any]:
+    """Load property names and select/status options from the ticket Notion data source."""
+    ensure_env_loaded()
+    fmt = _ticket_format()
+    token = (os.getenv(ENV_NOTION_TOKEN) or "").strip()
+    db_id = (os.getenv(ENV_NOTION_TICKET_DB_ID) or "").strip()
+    out: dict[str, Any] = {
+        "format": fmt,
+        "database_title": "",
+        "properties": [],
+        "error": None,
+    }
+    if not token or not db_id:
+        out["error"] = "not_configured"
+        return out
+    try:
+        ds_id = _data_source_id_for_schema(token, db_id)
+        ds = _notion_rest_get(token, f"/v1/data_sources/{ds_id}")
+    except ValueError as exc:
+        out["error"] = str(exc)
+        return out
+    except Exception as exc:  # pragma: no cover
+        out["error"] = str(exc)
+        return out
+    out["database_title"] = "".join(
+        t.get("plain_text", "") for t in (ds.get("title") or [])
+    )
+    header_order = [
+        "type",
+        "status",
+        "priority",
+        "current_sprint",
+        "original_sprint",
+        "epic",
+        "epic_timing",
+        "dev_owner",
+        "include_in_email",
+        "email_sent_in",
+        "eng_due_date",
+        "cust_release_date",
+        "estimated_effort",
+        "tags",
+    ]
+
+    people_options = _people_option_labels_from_env()
+    props_raw = ds.get("properties") or {}
+    rows: List[dict[str, Any]] = []
+    for pname, pmeta in props_raw.items():
+        if not isinstance(pmeta, dict):
+            continue
+        nt = str(pmeta.get("type") or "")
+        opts = _property_options_list(pmeta, nt)
+        if nt == "people" and not opts and people_options:
+            opts = list(people_options)
+        key: Optional[str] = ""
+        if nt == "title":
+            key = None
+        elif fmt == FORMAT_ROADMAP:
+            key = _roadmap_column_ticket_key(pname)
+        else:
+            key = _classic_column_ticket_key(pname)
+        show_header = (
+            key is not None
+            and key != ""
+            and nt
+            in (
+                "select",
+                "status",
+                "multi_select",
+                "number",
+                "date",
+                "people",
+                "rich_text",
+            )
+        )
+        rows.append(
+            {
+                "name": pname,
+                "notion_type": nt,
+                "options": opts,
+                "key": key if key else "",
+                "show_in_header": bool(show_header),
+            }
+        )
+
+    if fmt == FORMAT_ROADMAP:
+        have = {r["key"] for r in rows if r.get("key")}
+        if "priority" not in have:
+            rows.append(
+                {
+                    "name": "Priority",
+                    "notion_type": "internal",
+                    "options": list(TICKET_PRIORITIES),
+                    "key": "priority",
+                    "show_in_header": True,
+                }
+            )
+
+    def _sort_key(r: dict[str, Any]) -> Tuple[int, str]:
+        k = r.get("key") or ""
+        if k in header_order:
+            return (header_order.index(k), r.get("name", ""))
+        return (len(header_order), r.get("name", ""))
+
+    rows.sort(key=_sort_key)
+    out["properties"] = rows
+    return out
+
+
+def get_cached_ticket_notion_schema() -> dict[str, Any]:
+    """Return schema dict, cached a few minutes (errors are not cached)."""
+    global _SCHEMA_CACHE
+    now = time.monotonic()
+    if _SCHEMA_CACHE is not None:
+        ts, payload = _SCHEMA_CACHE
+        if now - ts < SCHEMA_CACHE_TTL_SEC and not payload.get("error"):
+            return payload
+    payload = _fetch_ticket_notion_schema_uncached()
+    if not payload.get("error"):
+        _SCHEMA_CACHE = (now, payload)
+    else:
+        _SCHEMA_CACHE = None
+    return payload
+
+
+def get_ticket_notion_schema() -> dict[str, Any]:
+    """Public alias for API handlers."""
+    return get_cached_ticket_notion_schema()
+
+
+def build_ticket_system_prompt(schema: Optional[dict[str, Any]] = None) -> str:
+    """System prompt: static classic text or roadmap/options from Notion schema."""
+    schema = schema or {}
+    props = schema.get("properties") or []
+    by_key = {str(p.get("key")): p for p in props if p.get("key")}
+    fmt = schema.get("format") or _ticket_format()
+
+    if fmt != FORMAT_ROADMAP or not props or schema.get("error"):
+        out = TICKET_SYSTEM_PROMPT
+    else:
+        def _opts(k: str) -> List[str]:
+            o = by_key.get(k, {}).get("options") or []
+            return [str(x) for x in o if str(x).strip()]
+
+        cat_opts = _opts("type")
+        st_opts = _opts("status")
+        if not cat_opts:
+            cat_opts = list(TICKET_TYPES)
+        if not st_opts:
+            st_opts = [TICKET_STATUS_DEFAULT]
+
+        optional_fields: List[str] = []
+        opt_keys = [
+            ("current_sprint", "current_sprint"),
+            ("original_sprint", "original_sprint"),
+            ("epic", "epic"),
+            ("epic_timing", "epic_timing"),
+            ("dev_owner", "dev_owner"),
+            ("include_in_email", "include_in_email"),
+            ("email_sent_in", "email_sent_in"),
+            ("eng_due_date", "eng_due_date"),
+            ("cust_release_date", "cust_release_date"),
+        ]
+        for json_key, field_name in opt_keys:
+            if json_key not in by_key:
+                continue
+            o = _opts(json_key)
+            if o:
+                optional_fields.append(
+                    f'  "{field_name}": string (one of {json.dumps(o)} or "")'
+                )
+            elif field_name in ("eng_due_date", "cust_release_date"):
+                optional_fields.append(
+                    f'  "{field_name}": string (YYYY-MM-DD or "" if unknown)'
+                )
+            else:
+                optional_fields.append(
+                    f'  "{field_name}": string (use \"\" if unknown)'
+                )
+
+        opt_block = ""
+        if optional_fields:
+            opt_block = ",\n" + ",\n".join(optional_fields)
+
+        tags_line = ""
+        has_tags = "tags" in by_key
+        if has_tags:
+            tags_opts = _opts("tags")
+            if tags_opts:
+                tags_line = (
+                    f',\n  "tags": array of strings, each one of '
+                    f"{json.dumps(tags_opts)}"
+                )
+            else:
+                tags_line = ',\n  "tags": array of 1-5 short lowercase strings'
+
+        schema_body = (
+            "{\n"
+            f'  "title": string (max 80 chars, action-oriented),\n'
+            f'  "type": one of {json.dumps(cat_opts)}'
+            " — maps to Notion **Category**,\n"
+            f'  "priority": one of "urgent" | "high" | "medium" | "low"'
+            " — maps to numeric **Prio** in Notion,\n"
+            f'  "status": one of {json.dumps(st_opts)}'
+            " — maps to Notion **Ovr Status**,\n"
+            f'  "description": 2-3 sentences,\n'
+            f'  "acceptance_criteria": array of 2-5 short strings,\n'
+            f'  "related_context": brief note on which past tickets/docs informed this,\n'
+            f'  "estimated_effort": one of "small (< 1 day)" | "medium (1-3 days)" | '
+            f'"large (3+ days)"'
+            f"{tags_line}{opt_block}\n"
+            "}\n"
+        )
+        tags_rule = ""
+        if not has_tags:
+            tags_rule = (
+                " Do NOT include a 'tags' field — the target Notion database has "
+                "no tags column."
+            )
+        out = (
+            "You generate product tickets for the company's Notion **Product Roadmap** "
+            "database. "
+            "Prior conversation turns may include earlier descriptions and previously "
+            "generated ticket JSON. Use them only to interpret follow-ups. Each reply "
+            "must still be ONE new JSON object matching the schema below — no prose, no "
+            "Markdown fences.\n\n"
+            "Output ONLY a single JSON object. The JSON must match this exact schema:\n"
+            f"{schema_body}"
+            "Use the provided context to inform fields when evidence exists. "
+            "For select/status fields, values must match one of the listed options "
+            "exactly (spelling and capitalization)."
+            f"{tags_rule} "
+            "If the context is unrelated, set related_context to "
+            '"No directly related context found."'
+        )
+
+    suf = ticket_template_prompt_suffix()
+    return out + ("\n\n" + suf if suf else "")
+
+
+def _parse_template_sections_from_model(
+    data: dict[str, Any], tmpl: dict[str, Any]
+) -> dict[str, str]:
+    """Pull ``template_sections`` for fillable indices; default empty strings."""
+    raw = data.get("template_sections")
+    fillable = {
+        str(s["index"])
+        for s in (tmpl.get("sections") or [])
+        if isinstance(s, dict) and s.get("fillable")
+    }
+    out: dict[str, str] = {}
+    if isinstance(raw, dict):
+        for k, v in raw.items():
+            sk = str(k).strip()
+            if sk in fillable:
+                out[sk] = _coerce_str(v)[:12000]
+    for fk in fillable:
+        out.setdefault(fk, "")
+    return out
+
+
+def parse_ticket_json(
+    raw: str, schema: Optional[dict[str, Any]] = None
+) -> Ticket:
     """Parse and validate Claude's JSON response into a :class:`Ticket`.
 
     Args:
@@ -355,16 +932,142 @@ def parse_ticket_json(raw: str) -> Ticket:
         default="No directly related context found.",
     )
 
+    schema = schema or {}
+    by_key = {
+        str(p.get("key")): p
+        for p in (schema.get("properties") or [])
+        if p.get("key")
+    }
+
+    def _opt_list(k: str) -> List[str]:
+        raw_o = list((by_key.get(k) or {}).get("options") or [])
+        return [str(x) for x in raw_o if str(x).strip()]
+
+    fmt_effective = str(schema.get("format") or _ticket_format())
+    roadmap_schema = (
+        fmt_effective == FORMAT_ROADMAP
+        and not schema.get("error")
+        and bool(by_key)
+    )
+
+    if roadmap_schema:
+        cat_opts = _opt_list("type")
+        st_opts = _opt_list("status")
+        sp_opts = _opt_list("current_sprint")
+        o_sp_opts = _opt_list("original_sprint")
+        epic_opts = _opt_list("epic")
+        et_opts = _opt_list("epic_timing")
+        inc_opts = _opt_list("include_in_email")
+        em_opts = _opt_list("email_sent_in")
+
+        cat_fb = cat_opts[0] if cat_opts else TICKET_TYPES[0]
+        type_val = _match_notion_option(
+            data.get("type"), cat_opts, fallback=cat_fb
+        )
+
+        st_env = (os.getenv(ENV_ROADMAP_OVR_STATUS_OPTION) or "").strip()
+        st_fb = st_env or (st_opts[0] if st_opts else TICKET_STATUS_DEFAULT)
+        status_val = _match_notion_option(
+            data.get("status"), st_opts, fallback=st_fb
+        )
+
+        priority_val = _coerce_enum(
+            data.get("priority"), TICKET_PRIORITIES, fallback="medium"
+        )
+
+        cur_sp = _coerce_str(data.get("current_sprint"))[:120]
+        if sp_opts:
+            cur_sp = _match_notion_option(cur_sp, sp_opts, fallback="")
+
+        orig_sp = _coerce_str(data.get("original_sprint"))[:120]
+        if o_sp_opts:
+            orig_sp = _match_notion_option(orig_sp, o_sp_opts, fallback="")
+
+        epic_v = _coerce_str(data.get("epic"))
+        if epic_opts:
+            epic_v = _match_notion_option(epic_v, epic_opts, fallback="")
+
+        et_v = _coerce_str(data.get("epic_timing"))
+        if et_opts:
+            et_v = _match_notion_option(et_v, et_opts, fallback="")
+
+        inc_v = _coerce_str(data.get("include_in_email"))
+        if inc_opts:
+            inc_v = _match_notion_option(inc_v, inc_opts, fallback="")
+
+        em_v = _coerce_str(data.get("email_sent_in"))
+        if em_opts:
+            em_v = _match_notion_option(em_v, em_opts, fallback="")
+
+        eng_due = _coerce_str(data.get("eng_due_date"))[:32]
+        cust_rel = _coerce_str(data.get("cust_release_date"))[:32]
+        dev_o = _coerce_str(data.get("dev_owner"))[:200]
+        tags_opts = _opt_list("tags")
+        if "tags" in by_key:
+            tags_raw = _coerce_str_list(data.get("tags"))
+            if tags_opts:
+                allowed_cf = {t.casefold(): t for t in tags_opts}
+                tags_clean = []
+                for t in tags_raw:
+                    m = allowed_cf.get(t.casefold())
+                    if m and m not in tags_clean:
+                        tags_clean.append(m)
+                tags_value = tags_clean
+            else:
+                tags_value = tags_raw
+        else:
+            tags_value = []
+    else:
+        type_opts = _opt_list("type")
+        pri_opts = _opt_list("priority")
+        st_opts = _opt_list("status")
+
+        type_allowed: Sequence[str] = type_opts if type_opts else TICKET_TYPES
+        type_val = _match_notion_option(
+            data.get("type"), list(type_allowed), fallback=TICKET_TYPES[0]
+        )
+
+        if pri_opts:
+            priority_val = _match_notion_option(
+                data.get("priority"), pri_opts, fallback="medium"
+            )
+        else:
+            priority_val = _coerce_enum(
+                data.get("priority"), TICKET_PRIORITIES, fallback="medium"
+            )
+
+        if st_opts:
+            status_val = _match_notion_option(
+                data.get("status"), st_opts, fallback=st_opts[0]
+            )
+        else:
+            status_val = (
+                _coerce_str(data.get("status"), default=TICKET_STATUS_DEFAULT)
+                or TICKET_STATUS_DEFAULT
+            )
+
+        cur_sp = _coerce_str(data.get("current_sprint"))[:120]
+        orig_sp = _coerce_str(data.get("original_sprint"))[:120]
+        epic_v = _coerce_str(data.get("epic"))
+        et_v = _coerce_str(data.get("epic_timing"))
+        inc_v = _coerce_str(data.get("include_in_email"))
+        em_v = _coerce_str(data.get("email_sent_in"))
+        eng_due = _coerce_str(data.get("eng_due_date"))[:32]
+        cust_rel = _coerce_str(data.get("cust_release_date"))[:32]
+        dev_o = _coerce_str(data.get("dev_owner"))[:200]
+        tags_value = _coerce_str_list(data.get("tags"))
+
+    tmpl = load_template()
+    uses_template = bool(tmpl and tmpl.get("sections"))
+    template_sections: dict[str, str] = {}
+    if uses_template and tmpl:
+        template_sections = _parse_template_sections_from_model(data, tmpl)
+
     return Ticket(
         title=title or "Untitled ticket",
-        type=_coerce_enum(
-            data.get("type"), TICKET_TYPES, fallback=TICKET_TYPES[0]
-        ),
-        priority=_coerce_enum(
-            data.get("priority"), TICKET_PRIORITIES, fallback="medium"
-        ),
-        status=_coerce_str(data.get("status"), default=TICKET_STATUS_DEFAULT)
-        or TICKET_STATUS_DEFAULT,
+        type=type_val,
+        priority=priority_val,
+        status=status_val,
         description=description,
         acceptance_criteria=_coerce_str_list(data.get("acceptance_criteria")),
         related_context=related,
@@ -373,9 +1076,18 @@ def parse_ticket_json(raw: str) -> Ticket:
             EFFORT_OPTIONS,
             fallback="medium (1-3 days)",
         ),
-        tags=_coerce_str_list(data.get("tags")),
-        current_sprint=_coerce_str(data.get("current_sprint"))[:120],
-        dev_owner=_coerce_str(data.get("dev_owner"))[:200],
+        tags=tags_value,
+        current_sprint=cur_sp,
+        dev_owner=dev_o,
+        epic=epic_v or "",
+        epic_timing=et_v or "",
+        original_sprint=orig_sp or "",
+        include_in_email=inc_v or "",
+        email_sent_in=em_v or "",
+        eng_due_date=eng_due or "",
+        cust_release_date=cust_rel or "",
+        uses_template=uses_template,
+        template_sections=template_sections,
     )
 
 
@@ -411,15 +1123,33 @@ def _resolve_dev_owner_to_notion_user_ids(label: str) -> List[str]:
     return []
 
 
-def _ticket_generation_constraints_block() -> str:
+def _ticket_generation_constraints_block(
+    schema: Optional[dict[str, Any]] = None,
+) -> str:
     """Optional CONSTRAINTS block listing allowed sprint names and owner keys."""
     ensure_env_loaded()
     lines: List[str] = []
-    sprints_raw = (os.getenv(ENV_ROADMAP_SPRINT_OPTIONS) or "").strip()
-    if sprints_raw:
-        parts = [p.strip() for p in sprints_raw.split(",") if p.strip()]
-        if parts:
-            lines.append(f"Allowed current_sprint values: {json.dumps(parts)}")
+    schema = schema or {}
+    by_key = {
+        str(p.get("key")): p
+        for p in (schema.get("properties") or [])
+        if p.get("key")
+    }
+    sprint_from_schema = [
+        str(x)
+        for x in (by_key.get("current_sprint") or {}).get("options") or []
+        if str(x).strip()
+    ]
+    if sprint_from_schema:
+        lines.append(
+            f"Allowed current_sprint values: {json.dumps(sprint_from_schema)}"
+        )
+    else:
+        sprints_raw = (os.getenv(ENV_ROADMAP_SPRINT_OPTIONS) or "").strip()
+        if sprints_raw:
+            parts = [p.strip() for p in sprints_raw.split(",") if p.strip()]
+            if parts:
+                lines.append(f"Allowed current_sprint values: {json.dumps(parts)}")
     people_raw = (os.getenv(ENV_ROADMAP_PEOPLE_MAP) or "").strip()
     if people_raw:
         try:
@@ -579,13 +1309,48 @@ def _ticket_to_notion_properties_classic(ticket: Ticket) -> dict[str, Any]:
     }
 
 
+def _roadmap_db_property_names() -> Optional[set[str]]:
+    """Property names on the ticket Notion data source, for push validation.
+
+    When the cache resolves, optional roadmap fields are skipped unless the
+    column exists — preventing ``… is not a property that exists`` when env
+    defaults or the model mention columns your DB does not have.
+
+    Returns:
+        Non-empty set of names, or ``None`` if schema is unavailable (no filtering).
+    """
+    schema = get_cached_ticket_notion_schema()
+    if schema.get("error"):
+        return None
+    rows = schema.get("properties") or []
+    names = {str(r.get("name")) for r in rows if r.get("name")}
+    return names if names else None
+
+
 def _ticket_to_notion_properties_roadmap(ticket: Ticket) -> dict[str, Any]:
     """Map a ticket to a roadmap DB: title, category, status, number prio, optional defaults.
 
     Expects a **title** property for the ticket name, **select** for Category,
     **status** for ``Ovr Status``, and **number** for ``Prio``. Other columns
-    are only sent when the matching ``NOTION_ROADMAP_DEFAULT_*`` env var is set.
+    are sent only when non-empty (ticket or ``NOTION_ROADMAP_DEFAULT_*``) **and**
+    that column exists on the data source (when schema cache is available).
     """
+    allowed = _roadmap_db_property_names()
+
+    def _merge_select(col: str, value: str) -> None:
+        if allowed is not None and col not in allowed:
+            return
+        merged = _optional_select(col, value)
+        if merged:
+            props.update(merged)
+
+    def _merge_date(col: str, iso_date: str) -> None:
+        if allowed is not None and col not in allowed:
+            return
+        merged = _optional_date(col, iso_date)
+        if merged:
+            props.update(merged)
+
     name_col = _notion_prop_column(ENV_ROADMAP_PROP_NAME, ROADMAP_DEFAULT_NAME)
     cat_col = _notion_prop_column(ENV_ROADMAP_PROP_CATEGORY, ROADMAP_DEFAULT_CATEGORY)
     st_col = _notion_prop_column(
@@ -612,64 +1377,66 @@ def _ticket_to_notion_properties_roadmap(ticket: Ticket) -> dict[str, Any]:
     sprint_val = (ticket.current_sprint or "").strip() or (
         os.getenv(ENV_ROADMAP_DEFAULT_CURRENT_SPRINT, "") or ""
     ).strip()
-    merged = _optional_select(spr_cur, sprint_val)
-    if merged:
-        props.update(merged)
+    _merge_select(spr_cur, sprint_val)
 
     spr_orig = _notion_prop_column(
         ENV_ROADMAP_PROP_ORIGINAL_SPRINT, ROADMAP_DEFAULT_ORIGINAL_SPRINT
     )
-    merged = _optional_select(
-        spr_orig, os.getenv(ENV_ROADMAP_DEFAULT_ORIGINAL_SPRINT, "") or ""
+    _merge_select(
+        spr_orig,
+        (ticket.original_sprint or "").strip()
+        or (os.getenv(ENV_ROADMAP_DEFAULT_ORIGINAL_SPRINT, "") or "").strip(),
     )
-    if merged:
-        props.update(merged)
 
     epic_col = _notion_prop_column(ENV_ROADMAP_PROP_EPIC, ROADMAP_DEFAULT_EPIC)
-    merged = _optional_select(epic_col, os.getenv(ENV_ROADMAP_DEFAULT_EPIC, "") or "")
-    if merged:
-        props.update(merged)
+    _merge_select(
+        epic_col,
+        (ticket.epic or "").strip()
+        or (os.getenv(ENV_ROADMAP_DEFAULT_EPIC, "") or "").strip(),
+    )
 
     epic_tim_col = _notion_prop_column(
         ENV_ROADMAP_PROP_EPIC_TIMING, ROADMAP_DEFAULT_EPIC_TIMING
     )
-    merged = _optional_select(
-        epic_tim_col, os.getenv(ENV_ROADMAP_DEFAULT_EPIC_TIMING, "") or ""
+    _merge_select(
+        epic_tim_col,
+        (ticket.epic_timing or "").strip()
+        or (os.getenv(ENV_ROADMAP_DEFAULT_EPIC_TIMING, "") or "").strip(),
     )
-    if merged:
-        props.update(merged)
 
     incl_col = _notion_prop_column(
         ENV_ROADMAP_PROP_INCLUDE_EMAIL, ROADMAP_DEFAULT_INCLUDE_EMAIL
     )
-    merged = _optional_select(
-        incl_col, os.getenv(ENV_ROADMAP_DEFAULT_INCLUDE_IN_EMAIL, "") or ""
+    _merge_select(
+        incl_col,
+        (ticket.include_in_email or "").strip()
+        or (os.getenv(ENV_ROADMAP_DEFAULT_INCLUDE_IN_EMAIL, "") or "").strip(),
     )
-    if merged:
-        props.update(merged)
 
     sent_col = _notion_prop_column(
         ENV_ROADMAP_PROP_EMAIL_SENT, ROADMAP_DEFAULT_EMAIL_SENT
     )
-    merged = _optional_select(
-        sent_col, os.getenv(ENV_ROADMAP_DEFAULT_EMAIL_SENT, "") or ""
+    _merge_select(
+        sent_col,
+        (ticket.email_sent_in or "").strip()
+        or (os.getenv(ENV_ROADMAP_DEFAULT_EMAIL_SENT, "") or "").strip(),
     )
-    if merged:
-        props.update(merged)
 
     due_col = _notion_prop_column(ENV_ROADMAP_PROP_ENG_DUE, ROADMAP_DEFAULT_ENG_DUE)
-    merged = _optional_date(due_col, os.getenv(ENV_ROADMAP_DEFAULT_ENG_DUE, "") or "")
-    if merged:
-        props.update(merged)
+    _merge_date(
+        due_col,
+        (ticket.eng_due_date or "").strip()
+        or (os.getenv(ENV_ROADMAP_DEFAULT_ENG_DUE, "") or "").strip(),
+    )
 
     cust_col = _notion_prop_column(
         ENV_ROADMAP_PROP_CUST_RELEASE, ROADMAP_DEFAULT_CUST_RELEASE
     )
-    merged = _optional_date(
-        cust_col, os.getenv(ENV_ROADMAP_DEFAULT_CUST_RELEASE, "") or ""
+    _merge_date(
+        cust_col,
+        (ticket.cust_release_date or "").strip()
+        or (os.getenv(ENV_ROADMAP_DEFAULT_CUST_RELEASE, "") or "").strip(),
     )
-    if merged:
-        props.update(merged)
 
     own_col = _notion_prop_column(
         ENV_ROADMAP_PROP_DEV_OWNER, ROADMAP_DEFAULT_DEV_OWNER
@@ -681,7 +1448,7 @@ def _ticket_to_notion_properties_roadmap(ticket: Ticket) -> dict[str, Any]:
             for x in (os.getenv(ENV_ROADMAP_DEV_OWNER_IDS, "") or "").split(",")
             if x.strip()
         ]
-    if owner_ids:
+    if owner_ids and (allowed is None or own_col in allowed):
         props[own_col] = {"people": [{"id": uid} for uid in owner_ids]}
 
     return props
@@ -695,7 +1462,10 @@ def _ticket_to_notion_properties(ticket: Ticket) -> dict[str, Any]:
 
 
 def _ticket_to_notion_children(ticket: Ticket) -> List[dict[str, Any]]:
-    """Page body: description paragraph, AC heading + bullets, related-context note."""
+    """Page body: template sections, or description + AC + related context."""
+    tmpl = load_template()
+    if ticket.uses_template and tmpl and tmpl.get("sections"):
+        return build_notion_children_from_template(tmpl, ticket.template_sections)
     children: List[dict[str, Any]] = [
         _build_paragraph_block(ticket.description),
         _build_heading_block("Acceptance Criteria"),
@@ -856,6 +1626,21 @@ class TicketChain:
             embed_model=embed_model,
             vector_store=vector_store,
         )
+        ex_filters = MetadataFilters(
+            filters=[
+                MetadataFilter(
+                    key=METADATA_SOURCE_TYPE,
+                    value=SOURCE_TYPE_NOTION_TICKET_EXAMPLE,
+                    operator=FilterOperator.EQ,
+                )
+            ]
+        )
+        self._example_retriever = build_vector_index_retriever(
+            similarity_top_k=TICKET_EXAMPLE_TOP_K,
+            embed_model=embed_model,
+            vector_store=vector_store,
+            filters=ex_filters,
+        )
         api_key = anthropic_api_key or os.getenv(ENV_ANTHROPIC_API_KEY)
         if not api_key:
             raise ValueError(
@@ -891,11 +1676,26 @@ class TicketChain:
         if not cleaned:
             raise ValueError("description must be a non-empty string")
 
-        retrieved_nodes = self._retriever.retrieve(cleaned)
-        contexts = [_node_to_context(n) for n in retrieved_nodes]
-        prompt_context = _format_context_for_prompt(contexts)
+        tmpl_active = load_template()
+        max_tokens = (
+            max(CLAUDE_MAX_TOKENS, 4096) if tmpl_active else CLAUDE_MAX_TOKENS
+        )
 
-        constraints = _ticket_generation_constraints_block()
+        retrieved_nodes = self._retriever.retrieve(cleaned)
+        example_nodes = self._example_retriever.retrieve(cleaned)
+        contexts = [_node_to_context(n) for n in retrieved_nodes]
+        ex_ctx = [_node_to_context(n) for n in example_nodes]
+        prompt_context = _format_context_for_prompt(contexts)
+        ex_block = _format_context_for_prompt(ex_ctx)
+        if ex_block.strip() and ex_block != "(no related internal context found)":
+            prompt_context = (
+                prompt_context
+                + "\n\n---\n\nSimilar **past ticket examples** (match tone/structure):\n"
+                + ex_block
+            )
+
+        schema = get_cached_ticket_notion_schema()
+        constraints = _ticket_generation_constraints_block(schema)
         user_message = (
             f"Relevant internal context (top {len(contexts)} chunks):\n"
             f"{prompt_context}\n\n"
@@ -910,18 +1710,19 @@ class TicketChain:
         api_messages: List[dict[str, str]] = list(history)
         api_messages.append({"role": "user", "content": user_message})
 
+        system_prompt = build_ticket_system_prompt(schema)
         message = self._anthropic.messages.create(
             model=CLAUDE_HAIKU_MODEL,
-            max_tokens=CLAUDE_MAX_TOKENS,
+            max_tokens=max_tokens,
             temperature=CLAUDE_TEMPERATURE,
-            system=TICKET_SYSTEM_PROMPT,
+            system=system_prompt,
             messages=api_messages,
         )
 
         raw_text = "".join(
             getattr(block, "text", "") for block in (message.content or [])
         )
-        ticket = parse_ticket_json(raw_text)
+        ticket = parse_ticket_json(raw_text, schema)
 
         notion_url: Optional[str] = None
         if push_to_notion:
