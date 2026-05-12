@@ -237,17 +237,46 @@ def fetch_block_children(token: str, block_id: str) -> List[dict[str, Any]]:
 
 
 def parse_sections_from_blocks(blocks: List[dict[str, Any]]) -> List[dict[str, Any]]:
-    """One section per top-level heading_1 / heading_2; last section not fillable."""
+    """One section per top-level heading or toggle; last section not fillable.
+
+    Mirrors Notion blank templates that use **toggle headings** (``heading_*`` with
+    ``is_toggleable: true``) or **toggle** blocks instead of static headings.
+    """
     sections: List[dict[str, Any]] = []
     for b in blocks:
+        if not isinstance(b, dict):
+            continue
         t = b.get("type")
-        if t not in ("heading_1", "heading_2"):
+        if t == "toggle":
+            title = _block_plain_text(b)
+            if not title:
+                continue
+            sections.append(
+                {
+                    "title": title,
+                    "heading_level": 2,
+                    "section_style": "toggle",
+                    "fillable": True,
+                }
+            )
             continue
-        level = 1 if t == "heading_1" else 2
-        title = _block_plain_text(b)
-        if not title:
-            continue
-        sections.append({"title": title, "heading_level": level, "fillable": True})
+        if t in ("heading_1", "heading_2", "heading_3", "heading_4"):
+            inner = b.get(t)
+            if not isinstance(inner, dict):
+                continue
+            title = _rich_text_to_plain(inner.get("rich_text"))
+            if not title:
+                continue
+            level = int(str(t).replace("heading_", "") or "2")
+            toggleable = bool(inner.get("is_toggleable"))
+            sections.append(
+                {
+                    "title": title,
+                    "heading_level": level,
+                    "section_style": "toggle_heading" if toggleable else "heading",
+                    "fillable": True,
+                }
+            )
     if sections:
         sections[-1]["fillable"] = False
     for i, s in enumerate(sections):
@@ -297,8 +326,9 @@ def set_template_from_page_url(url_or_id: str) -> dict[str, Any]:
     sections = parse_sections_from_blocks(blocks)
     if not sections:
         raise ValueError(
-            "No heading_1 or heading_2 blocks found on the template page. "
-            "Add section headings in Notion, then try again."
+            "No template sections found. Add top-level **toggle** blocks, "
+            "**toggle headings** (headings with ▼ / collapsible), or plain "
+            "**Heading 1–4** blocks on the template page, then try again."
         )
     payload: dict[str, Any] = {
         "page_id": page_id,
@@ -354,37 +384,81 @@ def _paragraph_block(text: str) -> dict[str, Any]:
     }
 
 
+def _body_paragraph_blocks(template_sections: dict[str, str], key: str) -> List[dict[str, Any]]:
+    body = (template_sections.get(key) or "").strip()
+    if not body:
+        body = "—"
+    return [_paragraph_block(p) for p in _split_paragraphs(body)]
+
+
 def build_notion_children_from_template(
     template: dict[str, Any],
     template_sections: dict[str, str],
 ) -> List[dict[str, Any]]:
-    """Section headings plus paragraph bodies for fillable sections."""
+    """Rebuild template structure: toggle headings, toggles, or plain headings + bodies."""
     children: List[dict[str, Any]] = []
     for sec in template.get("sections") or []:
         if not isinstance(sec, dict):
             continue
         idx = int(sec.get("index", -1))
+        key = str(idx)
         title = str(sec.get("title") or "").strip() or f"Section {idx}"
-        level = int(sec.get("heading_level") or 2)
-        htype = "heading_1" if level == 1 else "heading_2"
+        title_rt = [
+            {"type": "text", "text": {"content": title[:400]}}
+        ]
+        level = max(1, min(4, int(sec.get("heading_level") or 2)))
+        htype = f"heading_{level}"
+        style = str(sec.get("section_style") or "heading")
+
+        inner_paras: List[dict[str, Any]] = []
+        if sec.get("fillable"):
+            inner_paras = _body_paragraph_blocks(template_sections, key)
+
+        if style == "toggle":
+            children.append(
+                {
+                    "object": "block",
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": title_rt,
+                        "color": "default",
+                        "children": inner_paras,
+                    },
+                }
+            )
+            continue
+
+        if style == "toggle_heading":
+            heading_obj: dict[str, Any] = {
+                "rich_text": title_rt,
+                "color": "default",
+                "is_toggleable": True,
+            }
+            if inner_paras:
+                heading_obj["children"] = inner_paras
+            children.append(
+                {
+                    "object": "block",
+                    "type": htype,
+                    htype: heading_obj,
+                }
+            )
+            continue
+
+        # Plain heading (legacy templates)
         children.append(
             {
                 "object": "block",
                 "type": htype,
                 htype: {
-                    "rich_text": [
-                        {"type": "text", "text": {"content": title[:400]}}
-                    ]
+                    "rich_text": title_rt,
+                    "color": "default",
+                    "is_toggleable": False,
                 },
             }
         )
-        key = str(idx)
-        if sec.get("fillable"):
-            body = (template_sections.get(key) or "").strip()
-            if not body:
-                body = "—"
-            for para in _split_paragraphs(body):
-                children.append(_paragraph_block(para))
+        for para in inner_paras:
+            children.append(para)
     return children
 
 
@@ -404,17 +478,24 @@ def ticket_template_prompt_suffix() -> str:
         if not isinstance(s, dict):
             continue
         flag = "fillable" if s.get("fillable") else "not fillable — omit key"
+        sty = str(s.get("section_style") or "heading")
+        extra = ""
+        if sty == "toggle_heading":
+            extra = " [use this as a **collapsible heading** in Notion]"
+        elif sty == "toggle":
+            extra = " [use this as a **toggle block** in Notion]"
         lines.append(
-            f'- Index {s.get("index")}: "{s.get("title", "")}" ({flag})'
+            f'- Index {s.get("index")}: "{s.get("title", "")}" ({flag}){extra}'
         )
     return (
         "ACTIVE NOTION PAGE TEMPLATE\n"
-        "The new ticket's Notion page body will use these sections in order. "
+        "The new ticket's Notion page will match the template layout (including "
+        "**collapsible / toggle** sections where the template uses them). "
         'You MUST include top-level key "template_sections": an object whose '
         "keys are string indices "
         f"{json.dumps(fillable_keys)} for fillable sections only. "
-        "Each value is Markdown or plain text for the body under that heading "
-        "(do not repeat the heading title). For non-fillable sections, omit "
-        "the key entirely.\n"
+        "Each value is Markdown or plain text for the content **inside** that "
+        "section (below the toggle / heading — never repeat the section title). "
+        "For non-fillable sections, omit the key entirely.\n"
         "Sections:\n" + "\n".join(lines)
     )

@@ -47,6 +47,9 @@ logs/
 data/*
 !data/.gitkeep
 
+# Frontend toolchain (Vite / React markdown bundle)
+ui/node_modules/
+
 # Notion / discord exports caches
 .cache/
 *.cache

@@ -18,6 +18,7 @@ Public API:
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import re
@@ -329,6 +330,18 @@ class Ticket:
                 title = str(sec.get("title") or "").strip()
                 idx = str(sec.get("index", ""))
                 level = int(sec.get("heading_level") or 2)
+                style = str(sec.get("section_style") or "heading")
+                if style in ("toggle", "toggle_heading"):
+                    inner = ""
+                    if sec.get("fillable"):
+                        content = (self.template_sections.get(idx) or "").strip()
+                        inner = (content or "_—_") + "\n\n"
+                    body_parts.append(
+                        "<details>\n"
+                        f"<summary>{html.escape(title)}</summary>\n\n"
+                        f"{inner}</details>\n\n"
+                    )
+                    continue
                 prefix = "##" if level == 2 else "#"
                 body_parts.append(f"{prefix} {title}\n\n")
                 if sec.get("fillable"):

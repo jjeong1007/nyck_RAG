@@ -3,6 +3,7 @@
 Endpoints:
     - ``GET  /health``  → ``{"status": "ok"}``
     - ``POST /qa``      → ``{answer, sources, retrieval_meta}`` (``routing``, ``messages``, …)
+    - ``POST /qa/stream`` → SSE: retrieval ``meta``, streamed ``delta`` text, ``done`` / ``error``
     - ``POST /ticket``  → ``{ticket, sources, notion_url}``
     - ``GET  /ticket/schema`` → Notion ticket DB properties + select/status options
     - ``GET/POST/PATCH/DELETE /ticket/template`` → optional Notion page body layout (headings)
@@ -15,7 +16,7 @@ Endpoints:
     - ``GET  /sources/export`` → merged chunk text for one source (Markdown download)
     - ``DELETE /sources`` → remove all vectors for one ``source_type`` + ``file_name``
     - ``GET  /``         → redirects to ``/ui/``
-    - Static frontend mounted at ``/ui`` (vanilla HTML/JS).
+    - Static frontend mounted at ``/ui`` (HTML/JS + optional Vite-built markdown bundle).
 
 Errors are always returned as structured JSON; the API never crashes the
 process on a request. The Q&A and ticket chains are built lazily on first use
@@ -30,7 +31,7 @@ import os
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, AsyncIterator, Dict, List, Literal, Optional
+from typing import Any, AsyncIterator, Dict, Iterator, List, Literal, Optional
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -335,6 +336,7 @@ class TicketTemplateLayoutSectionModel(BaseModel):
     heading_level: int = 2
     fillable: bool = True
     body: str = ""
+    section_style: str = "heading"
 
 
 class TicketResponse(BaseModel):
@@ -448,6 +450,7 @@ def _ticket_template_layout_for_response(
                 heading_level=int(sec.get("heading_level") or 2),
                 fillable=fillable,
                 body=body,
+                section_style=str(sec.get("section_style") or "heading"),
             )
         )
     return out or None
@@ -608,6 +611,39 @@ async def qa(req: QARequest) -> QAResponse:
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Q&A backend error: {exc}",
         ) from exc
+
+
+@app.post("/qa/stream")
+async def qa_stream(req: QARequest) -> StreamingResponse:
+    """Stream the answer: first SSE event is retrieval ``meta``, then text ``delta`` chunks."""
+
+    def event_payloads() -> Iterator[str]:
+        try:
+            chain = _get_qa_chain()
+            history = [(m.role, m.content) for m in req.messages]
+            for ev in chain.ask_stream_events(
+                req.question,
+                chat_history=history,
+                routing=req.routing,
+                mode=req.mode,
+                source_types=req.source_types,
+            ):
+                yield f"data: {json.dumps(ev)}\n\n"
+        except ValueError as exc:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+        except Exception as exc:  # pragma: no cover - network / vendor failures
+            logger.exception("Q&A stream failed")
+            yield f"data: {json.dumps({'type': 'error', 'message': f'Q&A backend error: {exc}'})}\n\n"
+
+    return StreamingResponse(
+        event_payloads(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.get("/ticket/schema", response_model=TicketSchemaResponse)

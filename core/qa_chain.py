@@ -23,7 +23,7 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from typing import Any, List, Literal, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterator, List, Literal, Optional, Sequence, Tuple
 
 import anthropic
 from llama_index.core.schema import NodeWithScore
@@ -643,44 +643,25 @@ class QAChain:
         merged = _dedupe_nodes_by_best_score(collected)
         return _trim_nodes_to_context_budget(merged, budget)
 
-    def ask(
+    def _prepare_ask_llm(
         self,
-        question: str,
-        *,
-        chat_history: Optional[Sequence[Tuple[str, str]]] = None,
-        routing: RoutingMode = "auto",
-        mode: QAMode = "qa",
-        source_types: Optional[Sequence[str]] = None,
-    ) -> QAResult:
-        """Answer ``question`` using retrieved company knowledge.
-
-        Args:
-            question: User message for this turn.
-            chat_history: Optional prior ``(role, content)`` turns. Must not
-                include the current ``question``.
-            routing: ``auto`` runs a planner to choose retrieval depth and
-                ``source_type`` filters; ``manual`` uses ``mode`` and
-                ``source_types`` from this call.
-            mode: Used when ``routing`` is ``manual`` only.
-            source_types: Used when ``routing`` is ``manual`` only; restricts
-                retrieval to these metadata ``source_type`` values.
-
-        Returns:
-            :class:`QAResult` with answer, citations, and ``retrieval_meta`` fields.
-
-        Raises:
-            ValueError: If ``question`` is empty.
-            Exception: Network / API errors from OpenAI, Pinecone, or Anthropic
-                are propagated; callers should wrap to return a clean HTTP error.
-        """
-        cleaned = (question or "").strip()
-        if not cleaned:
-            raise ValueError("question must be a non-empty string")
-
-        hist_tuple = tuple(chat_history or ())
+        cleaned: str,
+        hist_tuple: Tuple[Tuple[str, str], ...],
+        routing: RoutingMode,
+        mode: QAMode,
+        source_types: Optional[Sequence[str]],
+    ) -> Tuple[
+        List[NodeWithScore],
+        QAMode,
+        Optional[List[str]],
+        bool,
+        str,
+        int,
+        float,
+        List[dict[str, str]],
+    ]:
         expansion_hint = ""
         creative = False
-
         if routing == "auto":
             effective_mode, scope_list, creative, expansion_hint = (
                 _route_retrieval_plan(self._anthropic, cleaned, hist_tuple)
@@ -721,11 +702,66 @@ class QAChain:
 
         context_block = _nodes_to_llm_context(nodes)
         history = _trim_chat_history(hist_tuple)
-
         api_messages: List[dict[str, str]] = list(history)
         api_messages.append(
             {"role": "user", "content": _final_user_payload(cleaned, context_block)}
         )
+        return (
+            nodes,
+            effective_mode,
+            scope_list,
+            creative,
+            system_prompt,
+            max_tokens,
+            temperature,
+            api_messages,
+        )
+
+    def ask(
+        self,
+        question: str,
+        *,
+        chat_history: Optional[Sequence[Tuple[str, str]]] = None,
+        routing: RoutingMode = "auto",
+        mode: QAMode = "qa",
+        source_types: Optional[Sequence[str]] = None,
+    ) -> QAResult:
+        """Answer ``question`` using retrieved company knowledge.
+
+        Args:
+            question: User message for this turn.
+            chat_history: Optional prior ``(role, content)`` turns. Must not
+                include the current ``question``.
+            routing: ``auto`` runs a planner to choose retrieval depth and
+                ``source_type`` filters; ``manual`` uses ``mode`` and
+                ``source_types`` from this call.
+            mode: Used when ``routing`` is ``manual`` only.
+            source_types: Used when ``routing`` is ``manual`` only; restricts
+                retrieval to these metadata ``source_type`` values.
+
+        Returns:
+            :class:`QAResult` with answer, citations, and ``retrieval_meta`` fields.
+
+        Raises:
+            ValueError: If ``question`` is empty.
+            Exception: Network / API errors from OpenAI, Pinecone, or Anthropic
+                are propagated; callers should wrap to return a clean HTTP error.
+        """
+        cleaned = (question or "").strip()
+        if not cleaned:
+            raise ValueError("question must be a non-empty string")
+
+        hist_tuple = tuple(chat_history or ())
+        (
+            nodes,
+            effective_mode,
+            scope_list,
+            creative,
+            system_prompt,
+            max_tokens,
+            temperature,
+            api_messages,
+        ) = self._prepare_ask_llm(cleaned, hist_tuple, routing, mode, source_types)
 
         message = self._anthropic.messages.create(
             model=CLAUDE_HAIKU_MODEL,
@@ -748,6 +784,58 @@ class QAChain:
             retrieval_routing=routing,
             creative_brainstorm=creative,
         )
+
+    def ask_stream_events(
+        self,
+        question: str,
+        *,
+        chat_history: Optional[Sequence[Tuple[str, str]]] = None,
+        routing: RoutingMode = "auto",
+        mode: QAMode = "qa",
+        source_types: Optional[Sequence[str]] = None,
+    ) -> Iterator[Dict[str, Any]]:
+        """Yield SSE-friendly chunks: ``meta``, ``delta`` (text), then ``done``.
+
+        Retrieval and routing run before the first yield; then Claude streams.
+        """
+        cleaned = (question or "").strip()
+        if not cleaned:
+            raise ValueError("question must be a non-empty string")
+
+        hist_tuple = tuple(chat_history or ())
+        (
+            nodes,
+            effective_mode,
+            scope_list,
+            creative,
+            system_prompt,
+            max_tokens,
+            temperature,
+            api_messages,
+        ) = self._prepare_ask_llm(cleaned, hist_tuple, routing, mode, source_types)
+
+        yield {
+            "type": "meta",
+            "sources": [_node_to_source(n).to_dict() for n in nodes],
+            "retrieval_meta": {
+                "mode": effective_mode,
+                "source_types": scope_list,
+                "routing": routing,
+                "creative_brainstorm": creative,
+            },
+        }
+
+        with self._anthropic.messages.stream(
+            model=CLAUDE_HAIKU_MODEL,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            system=system_prompt,
+            messages=api_messages,
+        ) as stream:
+            for text in stream.text_stream:
+                if text:
+                    yield {"type": "delta", "text": text}
+        yield {"type": "done"}
 
 
 # ----- Functional convenience -----------------------------------------------
